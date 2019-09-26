@@ -40,11 +40,11 @@ agent:
     {{ end }}
 hostname: {{ .Values.edgeAgent.hostname }}
 connect:
-  management_uri: "https://localhost:{{ .Values.iotedged.ports.management }}"
-  workload_uri: "https://localhost:{{ .Values.iotedged.ports.workload }}"
+  management_uri: "http://localhost:{{ .Values.iotedged.ports.management }}"
+  workload_uri: "http://localhost:{{ .Values.iotedged.ports.workload }}"
 listen:
-  management_uri: "https://0.0.0.0:{{ .Values.iotedged.ports.management }}"
-  workload_uri: "https://0.0.0.0:{{ .Values.iotedged.ports.workload }}"
+  management_uri: "http://0.0.0.0:{{ .Values.iotedged.ports.management }}"
+  workload_uri: "http://0.0.0.0:{{ .Values.iotedged.ports.workload }}"
 homedir: {{ .Values.iotedged.data.targetPath | quote }}
 namespace: {{ .Release.Namespace | quote }}
 use_pvc: False

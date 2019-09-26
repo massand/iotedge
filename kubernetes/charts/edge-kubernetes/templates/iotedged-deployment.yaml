@@ -47,17 +47,14 @@ spec:
             - name: workload
               containerPort: {{ .Values.iotedged.ports.workload }}
               protocol: TCP
-          livenessProbe:
-            httpGet:
-              scheme: HTTPS
-              path: "/systeminfo?api-version={{ .Values.iotedged.apiVersion }}"
-              port: {{ .Values.iotedged.ports.management }}
-          readinessProbe:
-            httpGet:
-              scheme: HTTPS
-              path: "/systeminfo?api-version={{ .Values.iotedged.apiVersion }}"
-              port: {{ .Values.iotedged.ports.management }}
-      serviceAccount: "iotedged"
+          # livenessProbe:
+          #   httpGet:
+          #     path: "/systeminfo?api-version={{ .Values.iotedged.apiVersion }}"
+          #     port: {{ .Values.iotedged.ports.management }}
+          # readinessProbe:
+          #   httpGet:
+          #     path: "/systeminfo?api-version={{ .Values.iotedged.apiVersion }}"
+          #     port: {{ .Values.iotedged.ports.management }}
       {{- /* Render image pull secrets if they have been provided. */ -}}
       {{- if .Values.registryCredentials }}
       imagePullSecrets:
