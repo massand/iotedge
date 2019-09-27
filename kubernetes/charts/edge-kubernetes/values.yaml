@@ -1,8 +1,8 @@
 # iotedged configuration
 iotedged:
   image:
-    repository: azureiotedge/iotedged
-    tag: 0.1.0-alpha
+    repository: dmolokanov/azureiotedge-iotedged-no-watchdog
+    tag: 0.1-linux-amd64
     pullPolicy: Always
   service:
     name: iotedged
