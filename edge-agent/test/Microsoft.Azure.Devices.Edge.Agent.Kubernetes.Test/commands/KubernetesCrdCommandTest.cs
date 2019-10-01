@@ -4,6 +4,8 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Test.Commands
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Net;
+    using System.Net.Http;
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
@@ -15,6 +17,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Test.Commands
     using Microsoft.Azure.Devices.Edge.Agent.Kubernetes.EdgeDeployment;
     using Microsoft.Azure.Devices.Edge.Util;
     using Microsoft.Azure.Devices.Edge.Util.Test.Common;
+    using Microsoft.Rest;
     using Moq;
     using Newtonsoft.Json;
     using Xunit;
@@ -51,6 +54,78 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Test.Commands
             Assert.Throws<ArgumentException>(() => new EdgeDeploymentCommand(null, ResourceName, DefaultClient, modules, Runtime, DefaultConfigProvider));
         }
 
+        // [Fact]
+        // [Unit]
+        // public async void CrdCommandExecuteWithAuthCreateNewObjects()
+        // {
+        //     CombinedDockerConfig config = new CombinedDockerConfig("image", new Docker.Models.CreateContainerParameters(), Option.None<AuthConfig>());
+        //     IModule m1 = new DockerModule("module1", "v1", ModuleStatus.Running, Core.RestartPolicy.Always, Config1, ImagePullPolicy.OnCreate, DefaultConfigurationInfo, EnvVars);
+        //     var km1 = new KubernetesModule((IModule<DockerConfig>)m1, config);
+        //     KubernetesModule[] modules = { km1 };
+        //     var token = default(CancellationToken);
+        //     var auth = new AuthConfig() { Username = "username", Password = "password", ServerAddress = "docker.io" };
+        //     var configProvider = new Mock<ICombinedConfigProvider<CombinedDockerConfig>>();
+        //     configProvider.Setup(cp => cp.GetCombinedConfig(km1, Runtime)).Returns(() => new CombinedDockerConfig("test-image:1", Config1.CreateOptions, Option.Maybe(auth)));
+        //     bool getSecretCalled = false;
+        //     bool postSecretCalled = false;
+        //     bool getCrdCalled = false;
+        //     bool postCrdCalled = false;
+        //     EdgeDeploymentDefinition postedEdgeDeploymentDefinition = null;
+        //
+        //     using (var server = new KubernetesApiServer(
+        //         resp: string.Empty,
+        //         shouldNext: httpContext =>
+        //         {
+        //             string pathStr = httpContext.Request.Path.Value;
+        //             string method = httpContext.Request.Method;
+        //             if (string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase))
+        //             {
+        //                 httpContext.Response.StatusCode = 404;
+        //                 if (pathStr.Contains($"api/v1/namespaces/{Namespace}/secrets"))
+        //                 {
+        //                     getSecretCalled = true;
+        //                 }
+        //                 else if (pathStr.Contains($"namespaces/{Namespace}/{Constants.EdgeDeployment.Plural}"))
+        //                 {
+        //                     getCrdCalled = true;
+        //                 }
+        //             }
+        //             else if (string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase))
+        //             {
+        //                 httpContext.Response.StatusCode = 201;
+        //                 httpContext.Response.Body = httpContext.Request.Body;
+        //                 if (pathStr.Contains($"api/v1/namespaces/{Namespace}/secrets"))
+        //                 {
+        //                     postSecretCalled = true;
+        //                 }
+        //                 else if (pathStr.Contains($"namespaces/{Namespace}/{Constants.EdgeDeployment.Plural}"))
+        //                 {
+        //                     postCrdCalled = true;
+        //                     StreamReader reader = new StreamReader(httpContext.Response.Body);
+        //                     string streamText = reader.ReadToEnd();
+        //                     postedEdgeDeploymentDefinition = JsonConvert.DeserializeObject<EdgeDeploymentDefinition>(streamText);
+        //                 }
+        //             }
+        //
+        //             return Task.FromResult(false);
+        //         }))
+        //     {
+        //         var client = new Kubernetes(
+        //             new KubernetesClientConfiguration
+        //             {
+        //                 Host = server.Uri
+        //             });
+        //         var cmd = new EdgeDeploymentCommand(Namespace, ResourceName, client, modules, Runtime, configProvider.Object);
+        //         await cmd.ExecuteAsync(token);
+        //         Assert.True(getSecretCalled, nameof(getSecretCalled));
+        //         Assert.True(postSecretCalled, nameof(postSecretCalled));
+        //         Assert.True(getCrdCalled, nameof(getCrdCalled));
+        //         Assert.True(postCrdCalled, nameof(postCrdCalled));
+        //         Assert.True(postedEdgeDeploymentDefinition.Spec[0].Env.Contains(new KeyValuePair<string,EnvVal>( "ACamelCaseEnvVar", new EnvVal("ACamelCaseEnvVarValue"))));
+        //
+        //     }
+        // }
+
         [Fact]
         [Unit]
         public async void CrdCommandExecuteWithAuthCreateNewObjects()
@@ -68,6 +143,25 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Test.Commands
             bool getCrdCalled = false;
             bool postCrdCalled = false;
             EdgeDeploymentDefinition postedEdgeDeploymentDefinition = null;
+            HttpOperationResponse<object> response = new HttpOperationResponse<object>();
+            response.Response = new HttpResponseMessage { StatusCode = HttpStatusCode.OK };
+
+            var k8Client = new Mock<IKubernetes>();
+            k8Client.Setup(
+                kClient => kClient.CreateNamespacedCustomObjectWithHttpMessagesAsync(
+                    It.IsAny<EdgeDeploymentDefinition>(),
+                    Constants.EdgeDeployment.Group,
+                    Constants.EdgeDeployment.Version,
+                    Namespace,
+                    Constants.EdgeDeployment.Plural, null, null, token)).Returns(Task.FromResult(response));
+
+            k8Client.Setup(
+                kClient => kClient.ReadNamespacedSecretAsync(
+                    It.IsAny<string>(), Namespace, null, null, null, default(CancellationToken)))
+                .Returns(Task.FromResult((V1Secret)null));
+
+            k8Client.Setup(
+                kClient => kClient.CreateNamespacedSecretAsync(It.IsAny<V1Secret>(), Namespace, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), default(CancellationToken))).Returns(Task.FromResult((V1Secret)null));
 
             using (var server = new KubernetesApiServer(
                 resp: string.Empty,
@@ -112,7 +206,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Test.Commands
                     {
                         Host = server.Uri
                     });
-                var cmd = new EdgeDeploymentCommand(Namespace, ResourceName, client, modules, Runtime, configProvider.Object);
+                var cmd = new EdgeDeploymentCommand(Namespace, ResourceName, k8Client.Object, modules, Runtime, configProvider.Object);
                 await cmd.ExecuteAsync(token);
                 Assert.True(getSecretCalled, nameof(getSecretCalled));
                 Assert.True(postSecretCalled, nameof(postSecretCalled));
