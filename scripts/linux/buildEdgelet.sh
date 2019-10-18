@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/local/bin/bash
 
 # This script copies the iodedged executable files that go into the azureiotedge-iotedged image,
 # for each supported arch (x86_64, arm32v7, arm64v8).

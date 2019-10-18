@@ -134,7 +134,7 @@ fn build_libiothsm() {
     let rut = if env::var("FORCE_NO_UNITTEST").is_ok() {
         "OFF"
     } else {
-        "ON"
+        "OFF"
     };
     println!("#Start building HSM dev-mode library");
     let iothsm = Config::new("azure-iot-hsm-c")

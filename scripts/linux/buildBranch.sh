@@ -244,13 +244,13 @@ build_solution
 
 publish_app "Microsoft.Azure.Devices.Edge.Agent.Service"
 publish_app "Microsoft.Azure.Devices.Edge.Hub.Service"
-publish_app "SimulatedTemperatureSensor"
-publish_app "TemperatureFilter"
+# publish_app "SimulatedTemperatureSensor"
+# publish_app "TemperatureFilter"
 publish_app "load-gen"
-publish_app "MessagesAnalyzer"
-publish_app "DirectMethodSender"
-publish_app "DirectMethodReceiver"
-publish_app "DirectMethodCloudSender"
+# publish_app "MessagesAnalyzer"
+# publish_app "DirectMethodSender"
+# publish_app "DirectMethodReceiver"
+# publish_app "DirectMethodCloudSender"
 
 publish_lib "Microsoft.Azure.WebJobs.Extensions.EdgeHub"
 publish_lib "EdgeHubTriggerCSharp"
@@ -262,11 +262,11 @@ publish_files $SRC_E2E_TEMPLATES_DIR $PUBLISH_FOLDER
 publish_files $SRC_E2E_TEST_FILES_DIR $PUBLISH_FOLDER
 publish_files $SRC_CERT_TOOLS_DIR $PUBLISH_FOLDER
 
-publish_quickstart linux-arm
-publish_quickstart linux-x64
-publish_quickstart linux-arm64
-publish_leafdevice linux-arm
-publish_leafdevice linux-x64
-publish_leafdevice linux-arm64
+# publish_quickstart linux-arm
+# publish_quickstart linux-x64
+# publish_quickstart linux-arm64
+# publish_leafdevice linux-arm
+# publish_leafdevice linux-x64
+# publish_leafdevice linux-arm64
 
 exit $RES
