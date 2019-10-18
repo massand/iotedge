@@ -25,10 +25,10 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Core
             // check whether the module is in a healthy state and update appropriately if not.
 
             // we don't really know what status "Unknown" means
-            if (status == ModuleStatus.Unknown)
-            {
-                throw new ArgumentException("ModuleStatus unknown is not a valid status.", nameof(status));
-            }
+            // if (status == ModuleStatus.Unknown)
+            // {
+            //     throw new ArgumentException("ModuleStatus unknown is not a valid status.", nameof(status));
+            // }
 
             if (status != ModuleStatus.Running && restartPolicy > RestartPolicy.Never)
             {
