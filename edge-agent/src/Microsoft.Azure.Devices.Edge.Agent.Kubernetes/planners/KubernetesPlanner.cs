@@ -9,7 +9,6 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Planners
     using System.Threading.Tasks;
     using k8s;
     using Microsoft.Azure.Devices.Edge.Agent.Core;
-    using Microsoft.Azure.Devices.Edge.Agent.Core.Commands;
     using Microsoft.Azure.Devices.Edge.Agent.Docker;
     using Microsoft.Azure.Devices.Edge.Agent.Kubernetes.EdgeDeployment;
     using Microsoft.Azure.Devices.Edge.Util;
@@ -97,13 +96,17 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Planners
 
         public async Task<Plan> CreateShutdownPlanAsync(ModuleSet current)
         {
-            IEnumerable<Task<ICommand>> stopTasks = current.Modules.Values
-                .Where(c => !c.Name.Equals(Constants.EdgeAgentModuleName, StringComparison.OrdinalIgnoreCase))
-                .Select(m => this.commandFactory.StopAsync(m));
-            ICommand[] stopCommands = await Task.WhenAll(stopTasks);
-            ICommand parallelCommand = new ParallelGroupCommand(stopCommands);
-            Events.ShutdownPlanCreated(stopCommands);
-            return new Plan(new[] { parallelCommand });
+            Plan plan;
+            var crdCommand = new EdgeDeploymentRemoveCommand(this.deviceNamespace, this.resourceName, this.client);
+            var planCommand = await this.commandFactory.WrapAsync(crdCommand);
+            var planList = new List<ICommand>
+            {
+                planCommand
+            };
+            Events.PlanCreated(planList);
+            plan = new Plan(planList);
+
+            return plan;
         }
 
         static class Events
@@ -139,9 +142,9 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Planners
                 Log.LogDebug((int)EventIds.Identities, $"List of module identities is - {string.Join(", ", moduleIdentities.Keys)}");
             }
 
-            public static void ShutdownPlanCreated(IReadOnlyList<ICommand> stopCommands)
+            public static void ShutdownPlanCreated(IReadOnlyList<ICommand> removeCommands)
             {
-                Log.LogDebug((int)EventIds.PlanCreated, $"KubernetesPlanner created shutdown Plan, with {stopCommands.Count} command(s).");
+                Log.LogDebug((int)EventIds.PlanCreated, $"KubernetesPlanner created shutdown Plan, with {removeCommands.Count} command(s).");
             }
         }
     }
