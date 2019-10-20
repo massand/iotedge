@@ -88,7 +88,19 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Planners
             return plan;
         }
 
-        public Task<Plan> CreateShutdownPlanAsync(ModuleSet current) => Task.FromResult(Plan.Empty);
+        public async Task<Plan> CreateShutdownPlanAsync(ModuleSet current)
+        {
+            var crdCommand = new EdgeDeploymentRemoveCommand(this.deviceNamespace, this.resourceName, this.client);
+            var planCommand = await this.commandFactory.WrapAsync(crdCommand);
+            var planList = new List<ICommand>
+            {
+                planCommand
+            };
+            Events.PlanCreated(planList);
+            var plan = new Plan(planList);
+
+            return plan;
+        }
 
         static class Events
         {
