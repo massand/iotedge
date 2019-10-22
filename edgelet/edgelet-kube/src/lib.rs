@@ -9,17 +9,17 @@
     clippy::use_self
 )]
 
+pub use error::{Error, ErrorKind};
+pub use module::KubeModule;
+pub use runtime::KubeModuleRuntime;
+pub use settings::Settings;
+
 mod constants;
 mod convert;
 mod error;
 mod module;
 mod runtime;
 mod settings;
-
-pub use error::{Error, ErrorKind};
-pub use module::KubeModule;
-pub use runtime::KubeModuleRuntime;
-pub use settings::Settings;
 
 #[cfg(test)]
 mod tests {
@@ -147,6 +147,22 @@ mod tests {
             .unwrap();
 
         Box::new(future::ok(response))
+    }
+
+    pub fn delete_handler() -> impl Fn(Request<Body>) -> ResponseFuture + Clone {
+        move |_| {
+            response(StatusCode::OK, || {
+                json!({
+                    "kind": "Deployment",
+                    "apiVersion": "v1",
+                    "metadata": {
+                        "name": "edgeagent",
+                        "namespace": "my-namespace",
+                    }
+                })
+                .to_string()
+            })
+        }
     }
 
     pub fn create_service_account_handler() -> impl Fn(Request<Body>) -> ResponseFuture + Clone {

@@ -1,19 +1,21 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-mod authentication;
-mod create;
-mod trust_bundle;
+use futures::{future, Future};
 
 pub use authentication::authenticate;
 pub use create::create_module;
-pub use trust_bundle::init_trust_bundle;
-
+pub use delete::delete_module;
 use edgelet_core::{Module, ModuleRuntimeState, ModuleStatus};
 use edgelet_docker::DockerConfig;
 use edgelet_utils::ensure_not_empty_with_context;
-use futures::{future, Future};
+pub use trust_bundle::init_trust_bundle;
 
 use crate::error::{Error, ErrorKind, Result};
+
+mod authentication;
+mod create;
+mod delete;
+mod trust_bundle;
 
 const MODULE_TYPE: &str = "docker";
 
