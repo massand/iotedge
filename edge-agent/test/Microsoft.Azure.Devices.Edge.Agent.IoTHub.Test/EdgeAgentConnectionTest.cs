@@ -55,7 +55,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.IoTHub.Test
                     { "App", "Mongo" }
                 },
                 Content = GetBaseConfigurationContent(),
-                Priority = priority + 1,
+                Priority = priority,
                 TargetCondition = targetCondition
             };
 
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.IoTHub.Test
                     { "Addon", "Stream Analytics" }
                 },
                 Content = GetAddOnConfigurationContent(),
-                Priority = priority,
+                Priority = priority + 1,
                 TargetCondition = targetCondition
             };
 
@@ -451,7 +451,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.IoTHub.Test
             string addOnConfigurationId = "addon" + configurationId;
             string conditionPropertyName = "condition-" + Guid.NewGuid().ToString("N");
             string conditionPropertyValue = Guid.NewGuid().ToString();
-            string iotHubConnectionString = await SecretsHelper.GetSecretFromConfigKey("iotHubConnStrKey");
+            string iotHubConnectionString = "HostName=standard.azure-devices.net;SharedAccessKeyName=iothubowner;SharedAccessKey=GVcPjgNm/9Q+ak5scheKGnxeslv8lvLCEFcjSeKzTfE=";
             IotHubConnectionStringBuilder iotHubConnectionStringBuilder = IotHubConnectionStringBuilder.Create(iotHubConnectionString);
             RegistryManager registryManager = RegistryManager.CreateFromConnectionString(iotHubConnectionString);
 
