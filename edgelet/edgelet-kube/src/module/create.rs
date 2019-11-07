@@ -316,7 +316,9 @@ mod tests {
         create_or_update_service_account,
     };
     use crate::module::create_module;
-    use crate::tests::{create_runtime, make_settings, not_found_handler, response};
+    use crate::tests::{
+        create_module_owner, create_runtime, make_settings, not_found_handler, response,
+    };
 
     #[test]
     fn it_creates_new_deployment_if_does_not_exist() {
@@ -331,8 +333,9 @@ mod tests {
         let service = service_fn(handler);
         let runtime = create_runtime(settings, service);
         let module = create_module_spec("edgeagent");
+        let module_owner = create_module_owner();
 
-        let task = create_or_update_deployment(&runtime, &module);
+        let task = create_or_update_deployment(&runtime, &module, &module_owner);
 
         let mut runtime = Runtime::new().unwrap();
         runtime.block_on(task).unwrap();
@@ -351,8 +354,9 @@ mod tests {
         let service = service_fn(handler);
         let runtime = create_runtime(settings, service);
         let module = create_module_spec("edgeagent");
+        let module_owner = create_module_owner();
 
-        let task = create_or_update_deployment(&runtime, &module);
+        let task = create_or_update_deployment(&runtime, &module, &module_owner);
 
         let mut runtime = Runtime::new().unwrap();
         runtime.block_on(task).unwrap();
@@ -370,8 +374,9 @@ mod tests {
         let service = service_fn(handler);
         let runtime = create_runtime(settings, service);
         let module = create_module_spec("edgeagent");
+        let module_owner = create_module_owner();
 
-        let task = create_or_update_role_binding(&runtime, &module);
+        let task = create_or_update_role_binding(&runtime, &module, &module_owner);
 
         let mut runtime = Runtime::new().unwrap();
         runtime.block_on(task).unwrap();
@@ -387,8 +392,9 @@ mod tests {
         let service = service_fn(handler);
         let runtime = create_runtime(settings, service);
         let module = create_module_spec("temp-sensor");
+        let module_owner = create_module_owner();
 
-        let task = create_or_update_role_binding(&runtime, &module);
+        let task = create_or_update_role_binding(&runtime, &module, &module_owner);
 
         let mut runtime = Runtime::new().unwrap();
         runtime.block_on(task).unwrap();
@@ -407,8 +413,9 @@ mod tests {
         let service = service_fn(handler);
         let runtime = create_runtime(settings, service);
         let module = create_module_spec("edgeagent");
+        let module_owner = create_module_owner();
 
-        let task = create_or_update_service_account(&runtime, &module);
+        let task = create_or_update_service_account(&runtime, &module, &module_owner);
 
         let mut runtime = Runtime::new().unwrap();
         runtime.block_on(task).unwrap();
@@ -427,8 +434,9 @@ mod tests {
         let service = service_fn(handler);
         let runtime = create_runtime(settings, service);
         let module = create_module_spec("edgeagent");
+        let module_owner = create_module_owner();
 
-        let task = create_or_update_service_account(&runtime, &module);
+        let task = create_or_update_service_account(&runtime, &module, &module_owner);
 
         let mut runtime = Runtime::new().unwrap();
         runtime.block_on(task).unwrap();

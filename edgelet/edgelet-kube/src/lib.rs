@@ -104,6 +104,7 @@ mod tests {
     use kube_client::{Client as KubeClient, Config as KubeConfig, Error, TokenSource};
 
     use crate::settings::Settings;
+    use crate::KubeModuleOwner;
     use crate::KubeModuleRuntime;
 
     pub const PROXY_TRUST_BUNDLE_CONFIG_MAP_NAME: &str = "device1-iotedged-proxy-trust-bundle";
@@ -156,6 +157,15 @@ mod tests {
             .unwrap();
 
         config.try_into().unwrap()
+    }
+
+    pub fn create_module_owner() -> KubeModuleOwner {
+        KubeModuleOwner::new(
+            "iotedged".to_string(),
+            "v1".to_string(),
+            "Deployment".to_string(),
+            "123".to_string(),
+        )
     }
 
     #[derive(Clone)]

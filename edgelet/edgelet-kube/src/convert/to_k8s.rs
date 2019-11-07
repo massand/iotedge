@@ -544,7 +544,10 @@ mod tests {
         spec_to_deployment, spec_to_role_binding, spec_to_service_account,
         trust_bundle_to_config_map,
     };
-    use crate::tests::{make_settings, PROXY_CONFIG_MAP_NAME, PROXY_TRUST_BUNDLE_CONFIG_MAP_NAME};
+    use crate::tests::{
+        create_module_owner, make_settings, PROXY_CONFIG_MAP_NAME,
+        PROXY_TRUST_BUNDLE_CONFIG_MAP_NAME,
+    };
     use crate::ErrorKind;
 
     fn create_module_spec() -> ModuleSpec<DockerConfig> {
@@ -621,8 +624,10 @@ mod tests {
     #[test]
     fn deployment_success() {
         let module_config = create_module_spec();
+        let module_owner = create_module_owner();
 
-        let (name, deployment) = spec_to_deployment(&make_settings(None), &module_config).unwrap();
+        let (name, deployment) =
+            spec_to_deployment(&make_settings(None), &module_config, &module_owner).unwrap();
         assert_eq!(name, "edgeagent");
         validate_deployment_metadata(
             "edgeagent",
@@ -699,9 +704,10 @@ mod tests {
     #[test]
     fn module_to_service_account() {
         let module = create_module_spec();
+        let module_owner = create_module_owner();
 
         let (name, service_account) =
-            spec_to_service_account(&make_settings(None), &module).unwrap();
+            spec_to_service_account(&make_settings(None), &module, &module_owner).unwrap();
         assert_eq!(name, "edgeagent");
 
         assert!(service_account.metadata.is_some());
@@ -728,8 +734,10 @@ mod tests {
     #[test]
     fn module_to_role_binding() {
         let module = create_module_spec();
+        let module_owner = create_module_owner();
 
-        let (name, role_binding) = spec_to_role_binding(&make_settings(None), &module).unwrap();
+        let (name, role_binding) =
+            spec_to_role_binding(&make_settings(None), &module, &module_owner).unwrap();
         assert_eq!(name, "edgeagent");
         assert!(role_binding.metadata.is_some());
         if let Some(metadata) = role_binding.metadata {
