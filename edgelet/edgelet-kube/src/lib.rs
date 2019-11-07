@@ -36,6 +36,33 @@ pub struct KubeModuleOwner {
     uid: String,
 }
 
+impl KubeModuleOwner {
+    pub fn new(name: String, api_version: String, kind: String, uid: String) -> Self {
+        KubeModuleOwner {
+            name,
+            api_version,
+            kind,
+            uid,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn api_version(&self) -> &str {
+        &self.api_version
+    }
+
+    pub fn kind(&self) -> &str {
+        &self.kind
+    }
+
+    pub fn uid(&self) -> &str {
+        &self.uid
+    }
+}
+
 impl TryFrom<Deployment> for KubeModuleOwner {
     type Error = Error;
 

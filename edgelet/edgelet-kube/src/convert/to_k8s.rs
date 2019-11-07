@@ -83,11 +83,11 @@ fn spec_to_podspec(
 
         env_vars.push(env(
             EDGE_OBJECT_OWNER_API_VERSION,
-            &module_owner.api_version,
+            module_owner.api_version(),
         ));
-        env_vars.push(env(EDGE_OBJECT_OWNER_KIND, &module_owner.kind));
-        env_vars.push(env(EDGE_OBJECT_OWNER_NAME, &module_owner.name));
-        env_vars.push(env(EDGE_OBJECT_OWNER_UID, &module_owner.uid));
+        env_vars.push(env(EDGE_OBJECT_OWNER_KIND, module_owner.kind()));
+        env_vars.push(env(EDGE_OBJECT_OWNER_NAME, module_owner.name()));
+        env_vars.push(env(EDGE_OBJECT_OWNER_UID, module_owner.uid()));
     }
 
     // Bind/volume mounts
@@ -329,11 +329,20 @@ pub fn spec_to_deployment(
     annotations.insert(EDGE_ORIGINAL_MODULEID.to_string(), spec.name().to_string());
 
     // Assemble everything
+    let owner_reference = api_meta::OwnerReference {
+        api_version: module_owner.api_version().to_string(),
+        name: module_owner.name().to_string(),
+        kind: module_owner.kind().to_string(),
+        uid: module_owner.uid().to_string(),
+        ..api_meta::OwnerReference::default()
+    };
+    let owner_vec = vec![owner_reference];
     let deployment = api_apps::Deployment {
         metadata: Some(api_meta::ObjectMeta {
             name: Some(deployment_name.clone()),
             namespace: Some(settings.namespace().to_string()),
             labels: Some(deployment_labels),
+            owner_references: Some(owner_vec),
             ..api_meta::ObjectMeta::default()
         }),
         spec: Some(api_apps::DeploymentSpec {
@@ -367,6 +376,7 @@ pub fn spec_to_deployment(
 pub fn spec_to_service_account(
     settings: &Settings,
     spec: &ModuleSpec<DockerConfig>,
+    module_owner: &KubeModuleOwner,
 ) -> Result<(String, api_core::ServiceAccount)> {
     let module_label_value = sanitize_dns_value(spec.name())?;
     let device_label_value =
@@ -389,12 +399,22 @@ pub fn spec_to_service_account(
     let mut annotations = BTreeMap::new();
     annotations.insert(EDGE_ORIGINAL_MODULEID.to_string(), spec.name().to_string());
 
+    let owner_reference = api_meta::OwnerReference {
+        api_version: module_owner.api_version().to_string(),
+        name: module_owner.name().to_string(),
+        kind: module_owner.kind().to_string(),
+        uid: module_owner.uid().to_string(),
+        ..api_meta::OwnerReference::default()
+    };
+    let owner_vec = vec![owner_reference];
+
     let service_account = api_core::ServiceAccount {
         metadata: Some(api_meta::ObjectMeta {
             name: Some(service_account_name.clone()),
             namespace: Some(settings.namespace().to_string()),
             labels: Some(labels),
             annotations: Some(annotations),
+            owner_references: Some(owner_vec),
             ..api_meta::ObjectMeta::default()
         }),
         ..api_core::ServiceAccount::default()
@@ -407,6 +427,7 @@ pub fn spec_to_service_account(
 pub fn spec_to_role_binding(
     settings: &Settings,
     spec: &ModuleSpec<DockerConfig>,
+    module_owner: &KubeModuleOwner,
 ) -> Result<(String, api_rbac::RoleBinding)> {
     let module_label_value = sanitize_dns_value(spec.name())?;
     let device_label_value =
@@ -429,12 +450,22 @@ pub fn spec_to_role_binding(
     let mut annotations = BTreeMap::new();
     annotations.insert(EDGE_ORIGINAL_MODULEID.to_string(), spec.name().to_string());
 
+    let owner_reference = api_meta::OwnerReference {
+        api_version: module_owner.api_version().to_string(),
+        name: module_owner.name().to_string(),
+        kind: module_owner.kind().to_string(),
+        uid: module_owner.uid().to_string(),
+        ..api_meta::OwnerReference::default()
+    };
+    let owner_vec = vec![owner_reference];
+
     let role_binding = api_rbac::RoleBinding {
         metadata: Some(api_meta::ObjectMeta {
             name: Some(role_binding_name.clone()),
             namespace: Some(settings.namespace().to_string()),
             labels: Some(labels),
             annotations: Some(annotations),
+            owner_references: Some(owner_vec),
             ..api_meta::ObjectMeta::default()
         }),
         role_ref: api_rbac::RoleRef {

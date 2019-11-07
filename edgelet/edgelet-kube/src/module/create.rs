@@ -115,7 +115,7 @@ where
 fn create_or_update_service_account<T, S>(
     runtime: &KubeModuleRuntime<T, S>,
     module: &ModuleSpec<DockerConfig>,
-    _module_owner: &KubeModuleOwner,
+    module_owner: &KubeModuleOwner,
 ) -> impl Future<Item = (), Error = Error>
 where
     T: TokenSource + Send + 'static,
@@ -126,7 +126,7 @@ where
     S::Error: Fail,
     S::Future: Send,
 {
-    spec_to_service_account(runtime.settings(), module)
+    spec_to_service_account(runtime.settings(), module, module_owner)
         .map_err(|err| Error::from(err.context(ErrorKind::KubeClient)))
         .map(|(name, new_service_account)| {
             let client_copy = runtime.client().clone();
@@ -188,7 +188,7 @@ where
 fn create_or_update_role_binding<T, S>(
     runtime: &KubeModuleRuntime<T, S>,
     module: &ModuleSpec<DockerConfig>,
-    _module_owner: &KubeModuleOwner,
+    module_owner: &KubeModuleOwner,
 ) -> impl Future<Item = (), Error = Error>
 where
     T: TokenSource + Send + 'static,
@@ -199,7 +199,7 @@ where
     S::Error: Fail,
     S::Future: Send,
 {
-    spec_to_role_binding(runtime.settings(), module)
+    spec_to_role_binding(runtime.settings(), module, module_owner)
         .map_err(|err| Error::from(err.context(ErrorKind::KubeClient)))
         .map(|(name, new_role_binding)| {
             // create new role only for edge agent
