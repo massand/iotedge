@@ -14,7 +14,10 @@ use kube_client::TokenSource;
 use crate::constants::EDGE_EDGE_AGENT_NAME;
 use crate::convert::{spec_to_deployment, spec_to_role_binding, spec_to_service_account};
 use crate::error::Error;
-use crate::{ErrorKind, KubeModuleRuntime};
+use crate::{ErrorKind, KubeModuleOwner, KubeModuleRuntime};
+use std::convert::TryFrom;
+
+pub type Result<T> = ::std::result::Result<T, Error>;
 
 pub fn create_module<T, S>(
     runtime: &KubeModuleRuntime<T, S>,
@@ -32,15 +35,29 @@ where
     let runtime_for_sa = runtime.clone();
     let module_for_sa = module.clone();
 
+    let runtime_for_rb = runtime.clone();
+    let module_for_rb = module.clone();
+
     let runtime_for_deployment = runtime.clone();
     let module_for_deployment = module.clone();
 
     let module_name = module.name().to_string();
+    let iotedged_module_name = "iotedged";
 
-    create_or_update_service_account(&runtime, &module)
-        .and_then(move |_| create_or_update_role_binding(&runtime_for_sa, &module_for_sa))
+    let module_owner = get_module_deployment(&runtime, &module, &iotedged_module_name)
+        .wait()
+        .unwrap();
+
+    create_or_update_service_account(&runtime_for_sa, &module_for_sa, &module_owner)
         .and_then(move |_| {
-            create_or_update_deployment(&runtime_for_deployment, &module_for_deployment)
+            create_or_update_role_binding(&runtime_for_rb, &module_for_rb, &module_owner)
+        })
+        .and_then(move |_| {
+            create_or_update_deployment(
+                &runtime_for_deployment,
+                &module_for_deployment,
+                &module_owner,
+            )
         })
         .map_err(|err| {
             Error::from(
@@ -51,9 +68,50 @@ where
         })
 }
 
+fn get_module_deployment<T, S>(
+    runtime: &KubeModuleRuntime<T, S>,
+    module: &ModuleSpec<DockerConfig>,
+    moduleName: &str,
+) -> impl Future<Item = (), Error = Error>
+where
+    T: TokenSource + Send + 'static,
+    S: Service + Send + 'static,
+    S::ReqBody: From<Vec<u8>>,
+    S::ResBody: Stream,
+    Body: From<S::ResBody>,
+    S::Error: Fail,
+    S::Future: Send,
+{
+    runtime
+        .client()
+        .lock()
+        .expect("Unexpected lock error")
+        .borrow_mut()
+        .list_deployments(
+            runtime.settings().namespace(),
+            Option::from(moduleName),
+            Some(&runtime.settings().device_hub_selector()),
+        )
+        .map_err(|err| Error::from(err.context(ErrorKind::KubeClient)))
+        .and_then(move |deployments| {
+            if let Some(this_deployment) = deployments.items.into_iter().find(|deployment| {
+                deployment.metadata.as_ref().map_or(false, |meta| {
+                    meta.name.as_ref().map_or(false, |n| *n == moduleName)
+                })
+            }) {
+                future::ok(KubeModuleOwner::try_from(this_deployment).unwrap())
+            } else {
+                future::err(Error::from(ErrorKind::KubeClient))
+            }
+        })
+        .into_future()
+        .flatten()
+}
+
 fn create_or_update_service_account<T, S>(
     runtime: &KubeModuleRuntime<T, S>,
     module: &ModuleSpec<DockerConfig>,
+    moduleOwner: &KubeModuleOwner,
 ) -> impl Future<Item = (), Error = Error>
 where
     T: TokenSource + Send + 'static,
@@ -126,6 +184,7 @@ where
 fn create_or_update_role_binding<T, S>(
     runtime: &KubeModuleRuntime<T, S>,
     module: &ModuleSpec<DockerConfig>,
+    moduleOwner: &KubeModuleOwner,
 ) -> impl Future<Item = (), Error = Error>
 where
     T: TokenSource + Send + 'static,
@@ -166,6 +225,7 @@ where
 fn create_or_update_deployment<T, S>(
     runtime: &KubeModuleRuntime<T, S>,
     module: &ModuleSpec<DockerConfig>,
+    moduleOwner: &KubeModuleOwner,
 ) -> impl Future<Item = (), Error = Error>
 where
     T: TokenSource + Send + 'static,
@@ -176,7 +236,7 @@ where
     S::Error: Fail,
     S::Future: Send,
 {
-    spec_to_deployment(runtime.settings(), module)
+    spec_to_deployment(runtime.settings(), module, moduleOwner)
         .map_err(|err| Error::from(err.context(ErrorKind::KubeClient)))
         .map(|(name, new_deployment)| {
             let client_copy = runtime.client().clone();

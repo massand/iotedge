@@ -17,10 +17,40 @@ mod registry;
 mod runtime;
 mod settings;
 
-pub use error::{Error, ErrorKind};
+pub use error::{Error, ErrorKind, Result};
 pub use module::KubeModule;
 pub use runtime::KubeModuleRuntime;
 pub use settings::Settings;
+
+use k8s_openapi::api::apps::v1 as api_apps;
+use k8s_openapi::Resource;
+use std::convert::TryFrom;
+
+type Deployment = api_apps::Deployment;
+
+pub struct KubeModuleOwner {
+    name: String,
+    apiVersion: String,
+    kind: String,
+    uid: String,
+}
+
+impl TryFrom<Deployment> for KubeModuleOwner {
+    type Error = Error;
+
+    fn try_from(deployment: Deployment) -> Result<Self> {
+        let metadata = deployment
+            .metadata
+            .as_ref()
+            .ok_or(ErrorKind::MissingMetadata)?;
+        Ok(Self {
+            name: metadata.name.ok_or(ErrorKind::MissingMetadata)?,
+            apiVersion: Deployment::api_version().to_string(),
+            kind: Deployment::kind().to_string(),
+            uid: metadata.uid.ok_or(ErrorKind::MissingMetadata)?,
+        })
+    }
+}
 
 #[cfg(test)]
 mod tests {

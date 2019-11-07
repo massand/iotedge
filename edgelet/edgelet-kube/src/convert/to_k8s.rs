@@ -19,6 +19,7 @@ use crate::convert::{sanitize_dns_domain, sanitize_dns_value};
 use crate::error::{ErrorKind, Result};
 use crate::registry::ImagePullSecret;
 use crate::settings::Settings;
+use crate::KubeModuleOwner;
 
 /// Converts Docker `ModuleSpec` to K8s `PodSpec`
 fn spec_to_podspec(
@@ -26,6 +27,7 @@ fn spec_to_podspec(
     spec: &ModuleSpec<DockerConfig>,
     module_label_value: String,
     module_image: String,
+    module_owner: &KubeModuleOwner,
 ) -> Result<api_core::PodSpec> {
     // privileged container
     let security = spec
@@ -78,6 +80,11 @@ fn spec_to_podspec(
             PROXY_TRUST_BUNDLE_PATH_KEY,
             settings.proxy_trust_bundle_path(),
         ));
+
+        env_vars.push(env(EDGE_OBJECT_OWNER_API_VERSION, &module_owner.apiVersion));
+        env_vars.push(env(EDGE_OBJECT_OWNER_KIND, &module_owner.kind));
+        env_vars.push(env(EDGE_OBJECT_OWNER_NAME, &module_owner.name));
+        env_vars.push(env(EDGE_OBJECT_OWNER_UID, &module_owner.uid));
     }
 
     // Bind/volume mounts
@@ -285,6 +292,7 @@ fn env<V: Into<String>>(key: &str, value: V) -> api_core::EnvVar {
 pub fn spec_to_deployment(
     settings: &Settings,
     spec: &ModuleSpec<DockerConfig>,
+    module_owner: &KubeModuleOwner,
 ) -> Result<(String, api_apps::Deployment)> {
     // Set some values...
     let module_label_value = sanitize_dns_value(spec.name())?;
@@ -342,6 +350,7 @@ pub fn spec_to_deployment(
                     spec,
                     module_label_value,
                     module_image,
+                    module_owner,
                 )?),
             },
             ..api_apps::DeploymentSpec::default()
