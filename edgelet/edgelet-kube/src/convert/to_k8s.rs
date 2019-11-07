@@ -81,7 +81,10 @@ fn spec_to_podspec(
             settings.proxy_trust_bundle_path(),
         ));
 
-        env_vars.push(env(EDGE_OBJECT_OWNER_API_VERSION, &module_owner.apiVersion));
+        env_vars.push(env(
+            EDGE_OBJECT_OWNER_API_VERSION,
+            &module_owner.api_version,
+        ));
         env_vars.push(env(EDGE_OBJECT_OWNER_KIND, &module_owner.kind));
         env_vars.push(env(EDGE_OBJECT_OWNER_NAME, &module_owner.name));
         env_vars.push(env(EDGE_OBJECT_OWNER_UID, &module_owner.uid));

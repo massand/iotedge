@@ -17,8 +17,6 @@ use crate::error::Error;
 use crate::{ErrorKind, KubeModuleOwner, KubeModuleRuntime};
 use std::convert::TryFrom;
 
-pub type Result<T> = ::std::result::Result<T, Error>;
-
 pub fn create_module<T, S>(
     runtime: &KubeModuleRuntime<T, S>,
     module: &ModuleSpec<DockerConfig>,
@@ -32,6 +30,8 @@ where
     S::Error: Fail,
     S::Future: Send,
 {
+    let runtime_for_owner = runtime.clone();
+
     let runtime_for_sa = runtime.clone();
     let module_for_sa = module.clone();
 
@@ -44,20 +44,23 @@ where
     let module_name = module.name().to_string();
     let iotedged_module_name = "iotedged";
 
-    let module_owner = get_module_deployment(&runtime, &module, &iotedged_module_name)
-        .wait()
-        .unwrap();
+    get_module_owner(&runtime_for_owner, &iotedged_module_name)
+        .and_then(move |module_owner| {
+            let module_owner1 = module_owner.clone();
+            let module_owner2 = module_owner.clone();
+            let module_owner3 = module_owner.clone();
 
-    create_or_update_service_account(&runtime_for_sa, &module_for_sa, &module_owner)
-        .and_then(move |_| {
-            create_or_update_role_binding(&runtime_for_rb, &module_for_rb, &module_owner)
-        })
-        .and_then(move |_| {
-            create_or_update_deployment(
-                &runtime_for_deployment,
-                &module_for_deployment,
-                &module_owner,
-            )
+            create_or_update_service_account(&runtime_for_sa, &module_for_sa, &module_owner1)
+                .and_then(move |_| {
+                    create_or_update_role_binding(&runtime_for_rb, &module_for_rb, &module_owner2)
+                })
+                .and_then(move |_| {
+                    create_or_update_deployment(
+                        &runtime_for_deployment,
+                        &module_for_deployment,
+                        &module_owner3,
+                    )
+                })
         })
         .map_err(|err| {
             Error::from(
@@ -68,11 +71,10 @@ where
         })
 }
 
-fn get_module_deployment<T, S>(
+fn get_module_owner<T, S>(
     runtime: &KubeModuleRuntime<T, S>,
-    module: &ModuleSpec<DockerConfig>,
-    moduleName: &str,
-) -> impl Future<Item = (), Error = Error>
+    module_name: &str,
+) -> impl Future<Item = KubeModuleOwner, Error = Error>
 where
     T: TokenSource + Send + 'static,
     S: Service + Send + 'static,
@@ -82,6 +84,7 @@ where
     S::Error: Fail,
     S::Future: Send,
 {
+    let module_name = module_name.to_string();
     runtime
         .client()
         .lock()
@@ -89,20 +92,21 @@ where
         .borrow_mut()
         .list_deployments(
             runtime.settings().namespace(),
-            Option::from(moduleName),
+            Some(&module_name),
             Some(&runtime.settings().device_hub_selector()),
         )
         .map_err(|err| Error::from(err.context(ErrorKind::KubeClient)))
-        .and_then(move |deployments| {
-            if let Some(this_deployment) = deployments.items.into_iter().find(|deployment| {
-                deployment.metadata.as_ref().map_or(false, |meta| {
-                    meta.name.as_ref().map_or(false, |n| *n == moduleName)
+        .map(move |deployments| {
+            deployments
+                .items
+                .into_iter()
+                .find(|deployment| {
+                    deployment.metadata.as_ref().map_or(false, |meta| {
+                        meta.name.as_ref().map_or(false, |n| *n == module_name)
+                    })
                 })
-            }) {
-                future::ok(KubeModuleOwner::try_from(this_deployment).unwrap())
-            } else {
-                future::err(Error::from(ErrorKind::KubeClient))
-            }
+                .ok_or(Error::from(ErrorKind::MissingMetadata))
+                .and_then(|this_deployment| KubeModuleOwner::try_from(this_deployment))
         })
         .into_future()
         .flatten()
@@ -111,7 +115,7 @@ where
 fn create_or_update_service_account<T, S>(
     runtime: &KubeModuleRuntime<T, S>,
     module: &ModuleSpec<DockerConfig>,
-    moduleOwner: &KubeModuleOwner,
+    _module_owner: &KubeModuleOwner,
 ) -> impl Future<Item = (), Error = Error>
 where
     T: TokenSource + Send + 'static,
@@ -184,7 +188,7 @@ where
 fn create_or_update_role_binding<T, S>(
     runtime: &KubeModuleRuntime<T, S>,
     module: &ModuleSpec<DockerConfig>,
-    moduleOwner: &KubeModuleOwner,
+    _module_owner: &KubeModuleOwner,
 ) -> impl Future<Item = (), Error = Error>
 where
     T: TokenSource + Send + 'static,
@@ -225,7 +229,7 @@ where
 fn create_or_update_deployment<T, S>(
     runtime: &KubeModuleRuntime<T, S>,
     module: &ModuleSpec<DockerConfig>,
-    moduleOwner: &KubeModuleOwner,
+    module_owner: &KubeModuleOwner,
 ) -> impl Future<Item = (), Error = Error>
 where
     T: TokenSource + Send + 'static,
@@ -236,7 +240,7 @@ where
     S::Error: Fail,
     S::Future: Send,
 {
-    spec_to_deployment(runtime.settings(), module, moduleOwner)
+    spec_to_deployment(runtime.settings(), module, module_owner)
         .map_err(|err| Error::from(err.context(ErrorKind::KubeClient)))
         .map(|(name, new_deployment)| {
             let client_copy = runtime.client().clone();

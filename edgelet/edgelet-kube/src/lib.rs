@@ -28,9 +28,10 @@ use std::convert::TryFrom;
 
 type Deployment = api_apps::Deployment;
 
+#[derive(Clone)]
 pub struct KubeModuleOwner {
     name: String,
-    apiVersion: String,
+    api_version: String,
     kind: String,
     uid: String,
 }
@@ -44,10 +45,18 @@ impl TryFrom<Deployment> for KubeModuleOwner {
             .as_ref()
             .ok_or(ErrorKind::MissingMetadata)?;
         Ok(Self {
-            name: metadata.name.ok_or(ErrorKind::MissingMetadata)?,
-            apiVersion: Deployment::api_version().to_string(),
+            name: metadata
+                .name
+                .as_ref()
+                .map(|name| name.to_string())
+                .ok_or(ErrorKind::MissingMetadata)?,
+            api_version: Deployment::api_version().to_string(),
             kind: Deployment::kind().to_string(),
-            uid: metadata.uid.ok_or(ErrorKind::MissingMetadata)?,
+            uid: metadata
+                .uid
+                .as_ref()
+                .map(|uid| uid.to_string())
+                .ok_or(ErrorKind::MissingMetadata)?,
         })
     }
 }
