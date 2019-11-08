@@ -673,7 +673,7 @@ mod tests {
     }
 
     fn validate_container_env(env: &[api_core::EnvVar]) {
-        assert_eq!(env.len(), 11);
+        assert_eq!(env.len(), 15);
         assert!(env.contains(&super::env("a", "b")));
         assert!(env.contains(&super::env("C", "D")));
         assert!(env.contains(&super::env(NAMESPACE_KEY, "default")));
@@ -699,6 +699,10 @@ mod tests {
             &PROXY_TRUST_BUNDLE_CONFIG_MAP_NAME_KEY,
             PROXY_TRUST_BUNDLE_CONFIG_MAP_NAME,
         )));
+        assert!(env.contains(&super::env(&EDGE_OBJECT_OWNER_API_VERSION, "v1",)));
+        assert!(env.contains(&super::env(&EDGE_OBJECT_OWNER_KIND, "Deployment",)));
+        assert!(env.contains(&super::env(&EDGE_OBJECT_OWNER_NAME, "iotedged",)));
+        assert!(env.contains(&super::env(&EDGE_OBJECT_OWNER_UID, "123",)));
     }
 
     #[test]

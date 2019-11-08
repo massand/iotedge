@@ -471,7 +471,15 @@ mod tests {
                 json!({
                     "kind": "DeploymentList",
                     "apiVersion": "apps/v1",
-                    "items": []
+                    "items": [
+                        {
+                            "metadata": {
+                                "name": "iotedged",
+                                "namespace": "my-namespace",
+                                "uid":"75d1a6a6-6bc9-4e80-906b-73fec80020ec",
+                            }
+                        }
+                    ]
                 })
                 .to_string()
             })
