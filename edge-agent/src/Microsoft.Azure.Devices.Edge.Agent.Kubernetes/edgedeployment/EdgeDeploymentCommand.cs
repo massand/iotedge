@@ -21,7 +21,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.EdgeDeployment
     public class EdgeDeploymentCommand : ICommand
     {
         readonly IKubernetes client;
-        readonly IReadOnlyCollection<IModule> modules;
+        readonly ModuleSet modules;
         readonly IRuntimeInfo runtimeInfo;
         readonly Lazy<string> id;
         readonly ICombinedConfigProvider<CombinedKubernetesConfig> configProvider;
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.EdgeDeployment
             string deviceNamespace,
             ResourceName resourceName,
             IKubernetes client,
-            IEnumerable<IModule> desiredmodules,
+            ModuleSet desiredmodules,
             Option<EdgeDeploymentDefinition> activeDeployment,
             IRuntimeInfo runtimeInfo,
             ICombinedConfigProvider<CombinedKubernetesConfig> configProvider,
@@ -48,10 +48,10 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.EdgeDeployment
             this.deviceNamespace = KubeUtils.SanitizeK8sValue(Preconditions.CheckNonWhiteSpace(deviceNamespace, nameof(deviceNamespace)));
             this.resourceName = Preconditions.CheckNotNull(resourceName, nameof(resourceName));
             this.client = Preconditions.CheckNotNull(client, nameof(client));
-            this.modules = Preconditions.CheckNotNull(desiredmodules, nameof(desiredmodules)).ToList();
+            this.modules = Preconditions.CheckNotNull(desiredmodules, nameof(desiredmodules));
             this.runtimeInfo = Preconditions.CheckNotNull(runtimeInfo, nameof(runtimeInfo));
             this.configProvider = Preconditions.CheckNotNull(configProvider, nameof(configProvider));
-            this.id = new Lazy<string>(() => this.modules.Aggregate(string.Empty, (prev, module) => module.Name + prev));
+            this.id = new Lazy<string>(() => this.modules.Modules.Values.Aggregate(string.Empty, (prev, module) => module.Name + prev));
             this.serializerSettings = EdgeDeploymentSerialization.SerializerSettings;
             this.moduleOwner = Preconditions.CheckNotNull(moduleOwner, nameof(moduleOwner));
             this.activeDeployment = activeDeployment;
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.EdgeDeployment
         async Task ManageImagePullSecrets(CancellationToken token)
         {
             // Modules may share an image pull secret, so only pick unique ones to add to the dictionary.
-            List<ImagePullSecret> secrets = this.modules
+            List<ImagePullSecret> secrets = this.modules.Modules.Values
                 .Select(module => this.configProvider.GetCombinedConfig(module, this.runtimeInfo))
                 .Select(config => config.ImagePullSecret)
                 .FilterMap()
@@ -130,41 +130,6 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.EdgeDeployment
 
         async Task PushEdgeDeployment(CancellationToken token)
         {
-            List<KubernetesModule> modulesList = this.modules
-                .Select(
-                    module =>
-                    {
-                        var combinedConfig = this.configProvider.GetCombinedConfig(module, this.runtimeInfo);
-                        var image = combinedConfig.Image;
-
-                        // TODO: this is a workaround in preview to keep Edge Agent from updating itself
-                        if (module.Name == Core.Constants.EdgeAgentModuleName)
-                        {
-                            if(this.activeDeployment.HasValue)
-                            {
-                                var currentAgent = this.activeDeployment.OrDefault().Spec.First(agentModule => agentModule.Name == Core.Constants.EdgeAgentModuleName);
-                                image = currentAgent.Config.Image;
-                            }
-                            else
-                            {
-                                try
-                                {
-                                    // When CRD has not been created, use helm chart deployment details
-                                    var agentDeployment = this.client.ReadNamespacedDeployment(Core.Constants.EdgeAgentModuleName.ToLower(), this.deviceNamespace);
-                                    image = agentDeployment.Spec.Template.Spec.Containers.First(container => container.Name == Core.Constants.EdgeAgentModuleName.ToLower()).Image;
-                                }
-                                catch (Exception e)
-                                {
-                                    Events.FindActiveDeploymentFailed(Core.Constants.EdgeAgentModuleName,e);
-                                }
-                            }
-                        }
-
-                        var authConfig = combinedConfig.ImagePullSecret.Map(secret => new AuthConfig(secret.Name));
-                        return new KubernetesModule(module, new KubernetesConfig(image, combinedConfig.CreateOptions, authConfig), this.moduleOwner);
-                    })
-                .ToList();
-
             var metadata = new V1ObjectMeta(
                 name: this.resourceName,
                 namespaceProperty: this.deviceNamespace,
@@ -173,7 +138,8 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.EdgeDeployment
             // need resourceVersion for Replace.
             this.activeDeployment.ForEach(deployment => metadata.ResourceVersion = deployment.Metadata.ResourceVersion);
 
-            var customObjectDefinition = new EdgeDeploymentDefinition(Constants.EdgeDeployment.ApiVersion, Constants.EdgeDeployment.Kind, metadata, modulesList);
+            IReadOnlyList<KubernetesModule> modules = (IReadOnlyList<KubernetesModule>)this.modules.Modules.Values;
+            var customObjectDefinition = new EdgeDeploymentDefinition(Constants.EdgeDeployment.ApiVersion, Constants.EdgeDeployment.Kind, metadata, modules);
             var crdObject = JObject.FromObject(customObjectDefinition, JsonSerializer.Create(this.serializerSettings));
 
             await this.activeDeployment.Match(
@@ -207,7 +173,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.EdgeDeployment
             return Task.CompletedTask;
         }
 
-        public string Show() => $"Create an EdgeDeployment with modules: ({string.Join(", ", this.modules.Select(m => m.Name))}\n)";
+        public string Show() => $"Create an EdgeDeployment with modules: ({string.Join(", ", this.modules.Modules.Values.Select(m => m.Name))}\n)";
 
         public override string ToString() => this.Show();
 

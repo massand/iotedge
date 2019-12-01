@@ -53,15 +53,11 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Planners
         {
             Events.LogDesired(desired);
 
-            // We receive current ModuleSet from Agent based on what it reports (i.e. pods).
-            // We need to rebuild the current ModuleSet based on deployments (i.e. CRD).
-            Option<EdgeDeploymentDefinition> activeDeployment = await this.GetCurrentEdgeDeploymentDefinitionAsync();
-            ModuleSet currentModules =
-                activeDeployment.Match(
-                a => ModuleSet.Create(a.Spec.ToArray()),
-                () => ModuleSet.Empty);
-
-            Events.LogCurrent(currentModules);
+            // TODO: improve this so it is generic for all potential module types.
+            if (!desired.Modules.Values.All(p => p is IModule<DockerConfig>))
+            {
+                throw new InvalidModuleException($"Kubernetes deployment currently only handles type={typeof(DockerConfig).FullName}");
+            }
 
             // Check that module names sanitize and remain unique.
             var groupedModules = desired.Modules.ToLookup(pair => KubeUtils.SanitizeK8sValue(pair.Key));
@@ -74,19 +70,58 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Planners
                 throw new InvalidIdentityException($"Deployment will cause a name collision in Kubernetes namespace, modules: [{nameList}]");
             }
 
-            // TODO: improve this so it is generic for all potential module types.
-            if (!desired.Modules.Values.All(p => p is IModule<DockerConfig>))
-            {
-                throw new InvalidModuleException($"Kubernetes deployment currently only handles type={typeof(DockerConfig).FullName}");
-            }
+            // We receive current ModuleSet from Agent based on what it reports (i.e. pods).
+            // We need to rebuild the current ModuleSet based on deployments (i.e. CRD).
+            Option<EdgeDeploymentDefinition> activeDeployment = await this.GetCurrentEdgeDeploymentDefinitionAsync();
 
-            Diff moduleDifference = desired.Diff(currentModules);
+            ModuleSet desiredModules = ModuleSet.Create(
+                desired.Modules.Values
+                .Select(
+                    module =>
+                    {
+                        var combinedConfig = this.configProvider.GetCombinedConfig(module, runtimeInfo);
+                        var image = combinedConfig.Image;
+
+                        // TODO: this is a workaround in preview to keep Edge Agent from updating itself
+                        if (module.Name == Core.Constants.EdgeAgentModuleName)
+                        {
+                            if (activeDeployment.HasValue)
+                            {
+                                var currentAgent = activeDeployment.OrDefault().Spec.First(agentModule => agentModule.Name == Core.Constants.EdgeAgentModuleName);
+                                image = currentAgent.Config.Image;
+                            }
+                            else
+                            {
+                                try
+                                {
+                                    // When CRD has not been created, use helm chart deployment details
+                                    var agentDeployment = this.client.ReadNamespacedDeployment(Core.Constants.EdgeAgentModuleName.ToLower(), this.deviceNamespace);
+                                    image = agentDeployment.Spec.Template.Spec.Containers.First(container => container.Name == Core.Constants.EdgeAgentModuleName.ToLower()).Image;
+                                }
+                                catch (Exception)
+                                {
+                                    //Events.FindActiveDeploymentFailed(Core.Constants.EdgeAgentModuleName, e);
+                                }
+                            }
+                        }
+
+                        var authConfig = combinedConfig.ImagePullSecret.Map(secret => new AuthConfig(secret.Name));
+                        return new KubernetesModule(module, new KubernetesConfig(image, combinedConfig.CreateOptions, authConfig), this.moduleOwner);
+                    }).ToArray());
+
+            ModuleSet currentModules = activeDeployment.Match(
+                a => ModuleSet.Create(a.Spec.ToArray()),
+                () => ModuleSet.Empty);
+
+            Events.LogCurrent(currentModules);
+
+            Diff moduleDifference = desiredModules.Diff(currentModules);
 
             Plan plan;
             if (!moduleDifference.IsEmpty)
             {
                 // The "Plan" here is very simple - if we have any change, publish all desired modules to a EdgeDeployment CRD.
-                var crdCommand = new EdgeDeploymentCommand(this.deviceNamespace, this.resourceName, this.client, desired.Modules.Values, activeDeployment, runtimeInfo, this.configProvider, this.moduleOwner);
+                var crdCommand = new EdgeDeploymentCommand(this.deviceNamespace, this.resourceName, this.client, desiredModules, activeDeployment, runtimeInfo, this.configProvider, this.moduleOwner);
                 var planCommand = await this.commandFactory.WrapAsync(crdCommand);
                 var planList = new List<ICommand>
                 {
