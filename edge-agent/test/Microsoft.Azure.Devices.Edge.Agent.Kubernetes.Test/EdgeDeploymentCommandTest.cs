@@ -370,5 +370,92 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Test
                 Assert.Equal(AgentConfig1.Image, agentModule.Config.Image);
             }
         }
+
+        [Fact]
+        [Unit]
+        public async void CrdCommandExecuteEdgeAgentDeploymentImageFallback()
+        {
+            IModule dockerModule = new DockerModule("edgeAgent", "v1", ModuleStatus.Running, RestartPolicy.Always, Config1, ImagePullPolicy.OnCreate, DefaultConfigurationInfo, EnvVars);
+            var dockerConfigProvider = new Mock<ICombinedConfigProvider<CombinedDockerConfig>>();
+            dockerConfigProvider.Setup(cp => cp.GetCombinedConfig(dockerModule, Runtime))
+                .Returns(() => new CombinedDockerConfig("test-image:1", Config1.CreateOptions, Option.Maybe(DockerAuth)));
+            var configProvider = new Mock<ICombinedConfigProvider<CombinedKubernetesConfig>>();
+            configProvider.Setup(cp => cp.GetCombinedConfig(dockerModule, Runtime))
+                .Returns(() => new CombinedKubernetesConfig("test-image:1", CreatePodParameters.Create(image: "test-image:1"), Option.Maybe(ImagePullSecret)));
+            Option<EdgeDeploymentDefinition> edgeDefinition = Option.None<EdgeDeploymentDefinition>();
+
+            using (var server = new KubernetesApiServer(
+                resp: string.Empty,
+                shouldNext: httpContext =>
+                {
+                    string pathStr = httpContext.Request.Path.Value;
+                    string method = httpContext.Request.Method;
+                    if (string.Equals(method, "GET", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (pathStr.Contains($"namespaces/{Namespace}/deployment"))
+                        {
+                            httpContext.Response.StatusCode = 200;
+                            V1Deployment d = new V1Deployment
+                            {
+                                Metadata = new V1ObjectMeta
+                                {
+                                    Name = "edgeagent"
+                                },
+                                Spec = new V1DeploymentSpec
+                                {
+                                    Template = new V1PodTemplateSpec
+                                    {
+                                        Metadata = new V1ObjectMeta
+                                        {
+                                            Name = "edgeagent",
+                                        },
+                                        Spec = new V1PodSpec
+                                        {
+                                            Containers = new List<V1Container>
+                                            {
+                                                new V1Container
+                                                {
+                                                    Image = "image:3"
+                                                }
+                                            },
+                                            ServiceAccountName = "edgeagent",
+                                        }
+                                    }
+                                }
+                            };
+                            StreamWriter writer = new StreamWriter(httpContext.Response.Body);
+                            writer.WriteLine(JsonConvert.SerializeObject(d));
+                        }
+                        else
+                        {
+                            httpContext.Response.StatusCode = 404;
+                        }
+                    }
+                    else if (string.Equals(method, "PUT", StringComparison.OrdinalIgnoreCase))
+                    {
+                        httpContext.Response.Body = httpContext.Request.Body;
+                        if (pathStr.Contains($"namespaces/{Namespace}/{Constants.EdgeDeployment.Plural}"))
+                        {
+                            StreamReader reader = new StreamReader(httpContext.Request.Body);
+                            string bodyText = reader.ReadToEnd();
+                            var body = JsonConvert.DeserializeObject<EdgeDeploymentDefinition>(bodyText);
+                            edgeDefinition = Option.Maybe(body);
+                        }
+                    }
+
+                    return Task.FromResult(false);
+                }))
+            {
+                var client = new Kubernetes(new KubernetesClientConfiguration { Host = server.Uri });
+                var cmd = new EdgeDeploymentCommand(Namespace, ResourceName, client, new[] { dockerModule }, Option.None<EdgeDeploymentDefinition>(), Runtime, configProvider.Object, EdgeletModuleOwner);;
+
+                await cmd.ExecuteAsync(CancellationToken.None);
+
+                Assert.True(edgeDefinition.HasValue);
+                var receivedEdgeDefinition = edgeDefinition.OrDefault();
+                var agentModule = receivedEdgeDefinition.Spec[0];
+                Assert.Equal(AgentConfig1.Image, agentModule.Config.Image);
+            }
+        }
     }
 }
