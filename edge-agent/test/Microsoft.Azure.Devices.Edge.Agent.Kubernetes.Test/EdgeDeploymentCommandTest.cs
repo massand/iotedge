@@ -383,10 +383,13 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Test
             configProvider.Setup(cp => cp.GetCombinedConfig(dockerModule, Runtime))
                 .Returns(() => new CombinedKubernetesConfig("test-image:1", CreatePodParameters.Create(image: "test-image:1"), Option.Maybe(ImagePullSecret)));
             Option<EdgeDeploymentDefinition> edgeDefinition = Option.None<EdgeDeploymentDefinition>();
+            string agentDeploymentImage = "image:3";
+            bool postSecretCalled = false;
+            bool postCrdCalled = false;
 
             using (var server = new KubernetesApiServer(
                 resp: string.Empty,
-                shouldNext: httpContext =>
+                shouldNext: async httpContext =>
                 {
                     string pathStr = httpContext.Request.Path.Value;
                     string method = httpContext.Request.Method;
@@ -397,9 +400,12 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Test
                             httpContext.Response.StatusCode = 200;
                             V1Deployment d = new V1Deployment
                             {
+                                ApiVersion = "apps/v1",
+                                Kind = "Deployment",
                                 Metadata = new V1ObjectMeta
                                 {
-                                    Name = "edgeagent"
+                                    Name = "edgeagent",
+                                    NamespaceProperty = Namespace
                                 },
                                 Spec = new V1DeploymentSpec
                                 {
@@ -415,27 +421,32 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Test
                                             {
                                                 new V1Container
                                                 {
-                                                    Image = "image:3"
+                                                    Image = agentDeploymentImage,
+                                                    Name = "edgeagent"
                                                 }
-                                            },
-                                            ServiceAccountName = "edgeagent",
+                                            }
                                         }
                                     }
                                 }
                             };
-                            StreamWriter writer = new StreamWriter(httpContext.Response.Body);
-                            writer.WriteLine(JsonConvert.SerializeObject(d));
+                            await httpContext.Response.Body.WriteAsync(JsonConvert.SerializeObject(d).ToBody());
                         }
                         else
                         {
                             httpContext.Response.StatusCode = 404;
                         }
                     }
-                    else if (string.Equals(method, "PUT", StringComparison.OrdinalIgnoreCase))
+                    else if (string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase))
                     {
+                        httpContext.Response.StatusCode = 201;
                         httpContext.Response.Body = httpContext.Request.Body;
-                        if (pathStr.Contains($"namespaces/{Namespace}/{Constants.EdgeDeployment.Plural}"))
+                        if (pathStr.Contains($"api/v1/namespaces/{Namespace}/secrets"))
                         {
+                            postSecretCalled = true;
+                        }
+                        else if (pathStr.Contains($"namespaces/{Namespace}/{Constants.EdgeDeployment.Plural}"))
+                        {
+                            postCrdCalled = true;
                             StreamReader reader = new StreamReader(httpContext.Request.Body);
                             string bodyText = reader.ReadToEnd();
                             var body = JsonConvert.DeserializeObject<EdgeDeploymentDefinition>(bodyText);
@@ -443,7 +454,7 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Test
                         }
                     }
 
-                    return Task.FromResult(false);
+                    return false;
                 }))
             {
                 var client = new Kubernetes(new KubernetesClientConfiguration { Host = server.Uri });
@@ -451,10 +462,12 @@ namespace Microsoft.Azure.Devices.Edge.Agent.Kubernetes.Test
 
                 await cmd.ExecuteAsync(CancellationToken.None);
 
+                Assert.True(postSecretCalled, nameof(postSecretCalled));
+                Assert.True(postCrdCalled, nameof(postCrdCalled));
                 Assert.True(edgeDefinition.HasValue);
                 var receivedEdgeDefinition = edgeDefinition.OrDefault();
                 var agentModule = receivedEdgeDefinition.Spec[0];
-                Assert.Equal(AgentConfig1.Image, agentModule.Config.Image);
+                Assert.Equal(agentDeploymentImage, agentModule.Config.Image);
             }
         }
     }
