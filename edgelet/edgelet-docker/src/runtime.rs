@@ -171,7 +171,13 @@ impl ModuleRegistry for DockerModuleRuntime {
 }
 
 fn test_oras() -> Result<usize> {
-    let child_process = Command::new("oras pull hackathonlight.azurecr.io/samples/artifact:2.0 -u hackathonlight -p O=UeWEFLVFZbciNEb4yJ0rMoFa1HRD7S")
+    let child_process = Command::new("oras")
+        .arg("pull")
+        .arg("hackathonlight.azurecr.io/samples/artifact:2.0")
+        .arg("-u")
+        .arg("hackathonlight")
+        .arg("-p")
+        .arg("O=UeWEFLVFZbciNEb4yJ0rMoFa1HRD7S")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
