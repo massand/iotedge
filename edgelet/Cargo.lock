@@ -1579,6 +1579,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "oras"
+version = "0.1.0"
+
+[[package]]
 name = "ordered-float"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"

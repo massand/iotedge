@@ -26,6 +26,7 @@ members = [
     "iothubservice",
     "management",
     "mini-sntp",
+    "oras",
     "provisioning",
     "signal-future",
     "systemd",
