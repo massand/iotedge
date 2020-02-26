@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::time::Duration;
 
+use std::process::{Command, Stdio};
+
 use base64;
 use failure::{Fail, ResultExt};
 use futures::future::Either;
@@ -118,18 +120,7 @@ impl ModuleRegistry for DockerModuleRuntime {
         );
 
         let response = creds
-            .map(|creds| {
-                self.client
-                    .image_api()
-                    .image_create(&image, "", "", "", "", &creds, "")
-                    .then(|result| match result {
-                        Ok(()) => Ok(image),
-                        Err(err) => Err(Error::from_docker_error(
-                            err,
-                            ErrorKind::RegistryOperation(RegistryOperation::PullImage(image)),
-                        )),
-                    })
-            })
+            .map(|_creds| test_oras())
             .into_future()
             .flatten()
             .then(move |result| match result {
@@ -177,6 +168,22 @@ impl ModuleRegistry for DockerModuleRuntime {
                 }),
         )
     }
+}
+
+fn test_oras() -> Result<usize> {
+    let child_process = Command::new("oras pull")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let output = child_process.wait_with_output().unwrap();
+    println!("{}", String::from_utf8_lossy(&output.stdout));
+    let check = String::from_utf8_lossy(&output.stdout)
+        .split_ascii_whitespace()
+        .filter(|line| *line == "Usage:")
+        .count();
+
+    Ok(check)
 }
 
 fn parse_get_response<'de, D>(resp: &InlineResponse200) -> std::result::Result<String, D::Error>
