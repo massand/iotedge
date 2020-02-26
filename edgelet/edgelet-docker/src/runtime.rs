@@ -171,7 +171,7 @@ impl ModuleRegistry for DockerModuleRuntime {
 }
 
 fn test_oras() -> Result<usize> {
-    let child_process = Command::new("oras pull")
+    let child_process = Command::new("oras pull hackathonlight.azurecr.io/samples/artifact:2.0 -u hackathonlight -p O=UeWEFLVFZbciNEb4yJ0rMoFa1HRD7S")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -180,7 +180,7 @@ fn test_oras() -> Result<usize> {
     println!("{}", String::from_utf8_lossy(&output.stdout));
     let check = String::from_utf8_lossy(&output.stdout)
         .split_ascii_whitespace()
-        .filter(|line| *line == "Usage:")
+        .filter(|line| *line == "Downloaded ec7f84176a7d payload1.txt")
         .count();
 
     Ok(check)
