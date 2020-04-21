@@ -1,0 +1,15 @@
+[package]
+name = "idserviced"
+version = "0.1.0"
+authors = ["Azure IoT Edge Devs"]
+publish = false
+description = """
+The idservice daemon is used to manage the Azure IoT identities.
+"""
+edition = "2018"
+
+[dependencies]
+iothubservice = { path = "../iothubservice" }
+dps = { path = "../dps" }
+identity = { path = "../identity" }
+

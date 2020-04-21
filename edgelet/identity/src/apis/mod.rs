@@ -20,7 +20,7 @@ where
     T: serde::Deserialize<'de>,
 {
     fn from(e: (hyper::StatusCode, &'de [u8])) -> Self {
-        if e.1.is_empty() {
+        if e.1.len() == 0 {
             return Error::ApiError(ApiError {
                 code: e.0,
                 content: None,
@@ -31,31 +31,29 @@ where
                 code: e.0,
                 content: Some(t),
             }),
-            Err(e) => e.into(),
+            Err(e) => Error::from(e),
         }
     }
 }
 
 impl<T> From<hyper::Error> for Error<T> {
     fn from(e: hyper::Error) -> Self {
-        Error::Hyper(e)
+        return Error::Hyper(e);
     }
 }
 
 impl<T> From<serde_json::Error> for Error<T> {
     fn from(e: serde_json::Error) -> Self {
-        Error::Serde(e)
+        return Error::Serde(e);
     }
 }
 
-mod device_actions_api;
-pub use self::device_actions_api::{DeviceActionsApi, DeviceActionsApiClient};
-mod identity_api;
-pub use self::identity_api::{IdentityApi, IdentityApiClient};
-mod module_api;
-pub use self::module_api::{ModuleApi, ModuleApiClient};
-mod system_information_api;
-pub use self::system_information_api::{SystemInformationApi, SystemInformationApiClient};
+mod device_identity_api;
+pub use self::device_identity_api::{DeviceIdentityApi, DeviceIdentityApiClient};
+mod module_identity_api;
+pub use self::module_identity_api::{ModuleIdentityApi, ModuleIdentityApiClient};
+mod workload_operations_api;
+pub use self::workload_operations_api::{WorkloadOperationsApi, WorkloadOperationsApiClient};
 
 pub mod client;
 pub mod configuration;
