@@ -7,9 +7,9 @@ use futures::{future, Future, Stream};
 use hyper::service::{NewService, Service};
 use hyper::{Body, Chunk, Request, Response, StatusCode};
 
-use edgelet_http::route::{Builder, Parameters, RegexRoutesBuilder, Router};
-use edgelet_http::Error as HttpError;
-use edgelet_http::Version;
+use shared_http::route::{Builder, Parameters, RegexRoutesBuilder, Router};
+use shared_http::Error as HttpError;
+use shared_http::Version;
 
 #[allow(clippy::needless_pass_by_value)]
 fn route1(

@@ -13,7 +13,6 @@ use std::sync::{Mutex, MutexGuard};
 use std::{env, io};
 
 use edgelet_hsm::Crypto;
-use edgelet_http::{HyperExt, TlsAcceptorParams};
 use futures::{future, Future};
 use hyper::server::conn::Http;
 use hyper::service::Service;
@@ -21,6 +20,7 @@ use hyper::{Body, Request, Response, StatusCode};
 use lazy_static::lazy_static;
 use nix::sys::socket::{self, AddressFamily, SockType};
 use nix::unistd::{self, getpid};
+use shared_http::{HyperExt, TlsAcceptorParams};
 use systemd::{Fd, LISTEN_FDS_START};
 use url::Url;
 

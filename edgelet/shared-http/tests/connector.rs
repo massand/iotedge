@@ -5,7 +5,6 @@
 
 use std::io;
 
-use edgelet_http::UrlConnector;
 #[cfg(windows)]
 use edgelet_test_utils::run_pipe_server;
 use edgelet_test_utils::{run_tcp_server, run_uds_server};
@@ -22,6 +21,7 @@ use hyperlocal::Uri as HyperlocalUri;
 use hyperlocal_windows::Uri as HyperlocalUri;
 #[cfg(windows)]
 use rand::Rng;
+use shared_http::UrlConnector;
 use tempdir::TempDir;
 use typed_headers::mime;
 use typed_headers::{ContentLength, ContentType, HeaderMapExt};

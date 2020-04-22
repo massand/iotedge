@@ -10,11 +10,11 @@ use edgelet_core::{
     CertificateIssuer, CertificateProperties, CertificateType, Protocol, IOTEDGED_CA_ALIAS,
 };
 use edgelet_hsm::{Crypto, HsmLock};
-use edgelet_http::certificate_manager::CertificateManager;
-use edgelet_http::route::{Builder, Parameters, RegexRoutesBuilder, Router};
-use edgelet_http::HyperExt;
-use edgelet_http::{Error as HttpError, TlsAcceptorParams};
-use edgelet_http::{Run, Version};
+use shared_http::certificate_manager::CertificateManager;
+use shared_http::route::{Builder, Parameters, RegexRoutesBuilder, Router};
+use shared_http::HyperExt;
+use shared_http::{Error as HttpError, TlsAcceptorParams};
+use shared_http::{Run, Version};
 
 use futures::{future, Future};
 use hyper::server::conn::Http;
