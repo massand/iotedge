@@ -1022,6 +1022,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "idservice-core"
+version = "0.1.0"
+
+[[package]]
 name = "idserviced"
 version = "0.1.0"
 dependencies = [
