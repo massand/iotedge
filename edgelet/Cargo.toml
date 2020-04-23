@@ -19,6 +19,7 @@ members = [
     "hsm-sys",
     "hyper-named-pipe",
     "identity",
+    "idservice-core",
     "idserviced",
     "iotedge",
     "iotedged",
