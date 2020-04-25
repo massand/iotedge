@@ -1052,6 +1052,7 @@ version = "0.1.0"
 dependencies = [
  "dps 0.1.0",
  "identity 0.1.0",
+ "idservice-core 0.1.0",
  "iothubservice 0.1.0",
 ]
 
