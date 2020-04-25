@@ -1,0 +1,27 @@
+# Manual provisioning configuration using a connection string
+[[provisioning]]
+source = "manual"
+device_connection_string = "<ADD DEVICE CONNECTION STRING HERE>"
+dynamic_reprovisioning = false
+
+# Configure device with three host-level processes when IS launches
+[[principals]]
+name = "iotedged"
+idtype = "local"
+authtype = "user"
+uid = 1000
+gid = 1000
+
+[[principals]]
+name = "iotedged"
+idtype = "device"
+authtype = "user"
+uid = 1001
+gid = 1001
+
+[[principals]]
+name = "iotedged"
+idtype = "module"
+authtype = "user"
+uid = 1002
+gid = 1002
