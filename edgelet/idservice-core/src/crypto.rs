@@ -13,11 +13,11 @@ use failure::ResultExt;
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
 
-use crate::certificate_properties::{CertificateIssuer, CertificateProperties};
+// use crate::certificate_properties::{CertificateIssuer, CertificateProperties};
 use crate::error::{Error, ErrorKind};
 
-/// This is the issuer alias used when `CertificateIssuer::DefaultCa` is provided by the caller
-pub const IOTEDGED_CA_ALIAS: &str = "iotedged-workload-ca";
+// /// This is the issuer alias used when `CertificateIssuer::DefaultCa` is provided by the caller
+// pub const IOTEDGED_CA_ALIAS: &str = "iotedged-workload-ca";
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum KeyIdentity {
@@ -117,9 +117,9 @@ where
     }
 }
 
-pub trait GetIssuerAlias {
-    fn get_issuer_alias(&self, issuer: CertificateIssuer) -> Result<String, Error>;
-}
+// pub trait GetIssuerAlias {
+//     fn get_issuer_alias(&self, issuer: CertificateIssuer) -> Result<String, Error>;
+// }
 
 pub trait GetDeviceIdentityCertificate {
     type Certificate: Certificate;
@@ -129,18 +129,18 @@ pub trait GetDeviceIdentityCertificate {
     fn sign_with_private_key(&self, data: &[u8]) -> Result<Self::Buffer, Error>;
 }
 
-pub trait CreateCertificate {
-    type Certificate: Certificate;
-
-    fn create_certificate(
-        &self,
-        properties: &CertificateProperties,
-    ) -> Result<Self::Certificate, Error>;
-
-    fn destroy_certificate(&self, alias: String) -> Result<(), Error>;
-
-    fn get_certificate(&self, alias: String) -> Result<Self::Certificate, Error>;
-}
+// pub trait CreateCertificate {
+//     type Certificate: Certificate;
+//
+//     fn create_certificate(
+//         &self,
+//         properties: &CertificateProperties,
+//     ) -> Result<Self::Certificate, Error>;
+//
+//     fn destroy_certificate(&self, alias: String) -> Result<(), Error>;
+//
+//     fn get_certificate(&self, alias: String) -> Result<Self::Certificate, Error>;
+// }
 
 pub trait Certificate {
     type Buffer: AsRef<[u8]>;

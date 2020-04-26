@@ -12,8 +12,8 @@ use url_serde;
 
 use crate::crypto::MemoryKey;
 use crate::error::{Error, ErrorKind};
-use crate::module::ModuleSpec;
-use crate::DEFAULT_AUTO_GENERATED_CA_LIFETIME_DAYS;
+// use crate::module::ModuleSpec;
+// use crate::DEFAULT_AUTO_GENERATED_CA_LIFETIME_DAYS;
 
 const DEVICEID_KEY: &str = "DeviceId";
 const HOSTNAME_KEY: &str = "HostName";
@@ -538,9 +538,9 @@ pub struct DeviceCertificate {
     trusted_ca_certs: String,
 }
 
-fn default_auto_generated_ca_lifetime_days() -> u16 {
-    DEFAULT_AUTO_GENERATED_CA_LIFETIME_DAYS
-}
+// fn default_auto_generated_ca_lifetime_days() -> u16 {
+//     DEFAULT_AUTO_GENERATED_CA_LIFETIME_DAYS
+// }
 
 fn is_supported_uri(uri: &Url) -> bool {
     if uri.scheme() == "file" && uri.port().is_none() && uri.query().is_none() {
@@ -683,8 +683,8 @@ pub trait RuntimeSettings {
     type Config;
 
     fn provisioning(&self) -> &Provisioning;
-    fn agent(&self) -> &ModuleSpec<Self::Config>;
-    fn agent_mut(&mut self) -> &mut ModuleSpec<Self::Config>;
+    // fn agent(&self) -> &ModuleSpec<Self::Config>;
+    // fn agent_mut(&mut self) -> &mut ModuleSpec<Self::Config>;
     fn hostname(&self) -> &str;
     fn connect(&self) -> &Connect;
     fn listen(&self) -> &Listen;
@@ -696,7 +696,7 @@ pub trait RuntimeSettings {
 #[derive(Clone, Debug, serde_derive::Deserialize, serde_derive::Serialize)]
 pub struct Settings<T> {
     provisioning: Provisioning,
-    agent: ModuleSpec<T>,
+    // agent: ModuleSpec<T>,
     hostname: String,
     connect: Connect,
     listen: Listen,
@@ -716,13 +716,13 @@ where
         &self.provisioning
     }
 
-    fn agent(&self) -> &ModuleSpec<T> {
-        &self.agent
-    }
-
-    fn agent_mut(&mut self) -> &mut ModuleSpec<T> {
-        &mut self.agent
-    }
+    // fn agent(&self) -> &ModuleSpec<T> {
+    //     &self.agent
+    // }
+    //
+    // fn agent_mut(&mut self) -> &mut ModuleSpec<T> {
+    //     &mut self.agent
+    // }
 
     fn hostname(&self) -> &str {
         &self.hostname
@@ -740,16 +740,16 @@ where
         &self.homedir
     }
 
-    // Certificates is left as an option for backward compat
-    fn certificates(&self) -> &Certificates {
-        match &self.certificates {
-            None => &Certificates {
-                device_cert: None,
-                auto_generated_ca_lifetime_days: DEFAULT_AUTO_GENERATED_CA_LIFETIME_DAYS,
-            },
-            Some(c) => c,
-        }
-    }
+    // // Certificates is left as an option for backward compat
+    // fn certificates(&self) -> &Certificates {
+    //     match &self.certificates {
+    //         None => &Certificates {
+    //             device_cert: None,
+    //             auto_generated_ca_lifetime_days: DEFAULT_AUTO_GENERATED_CA_LIFETIME_DAYS,
+    //         },
+    //         Some(c) => c,
+    //     }
+    // }
 
     fn watchdog(&self) -> &WatchdogSettings {
         &self.watchdog
