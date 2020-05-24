@@ -9,7 +9,7 @@ pub struct APIClient {
 impl APIClient {
   pub fn new<C>(configuration: Configuration<C>) -> Self
     where
-        C: hyper::client::connect::Connect::Connect + 'static,
+        C: hyper::client::connect::Connect + 'static,
   {
     let configuration = Arc::new(configuration);
 

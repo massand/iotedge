@@ -12,12 +12,11 @@ use std::borrow::Borrow;
 use std::sync::Arc;
 
 use futures::{Future, Stream};
-use typed_headers::{self, http, mime, HeaderMapExt};
-use url::percent_encoding::{percent_encode, PATH_SEGMENT_ENCODE_SET};
+use typed_headers::{self, http};
 
 use super::{Error, configuration};
 
-pub struct IdentityOperationsApiClient<C: hyper::client::connect::Connect::Connect> {
+pub struct IdentityOperationsApiClient<C: hyper::client::connect::Connect> {
     configuration: Arc<configuration::Configuration<C>>,
 }
 
@@ -29,16 +28,16 @@ impl<C: hyper::client::connect::Connect> IdentityOperationsApiClient<C> {
     }
 }
 
-pub trait IdentityOperationsApi : Send + Sync {
+pub trait IdentityOperationsApi {
     fn get_current_identity(&self, api_version: &str) -> Box<dyn Future<Item = crate::models::IdentityResult, Error = Error<serde_json::Value>>>;
 }
 
 
-impl<C: hyper::client::connect::Connect>IdentityOperationsApi for IdentityOperationsApiClient<C>
+impl<C> IdentityOperationsApi for IdentityOperationsApiClient<C>
 where
-    C: hyper::client::connect::Connect::Connect + 'static,
-    <C as hyper::client::connect::Connect::Connect>::Transport: 'static,
-    <C as hyper::client::connect::Connect::Connect>::Future: 'static,
+    C: hyper::client::connect::Connect + 'static,
+    <C as hyper::client::connect::Connect>::Transport: 'static,
+    <C as hyper::client::connect::Connect>::Future: 'static,
 {
     fn get_current_identity(&self, api_version: &str) -> Box<dyn Future<Item = crate::models::IdentityResult, Error = Error<serde_json::Value>>> {
         let configuration: &configuration::Configuration<C> = self.configuration.borrow();
