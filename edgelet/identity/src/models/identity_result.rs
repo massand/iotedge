@@ -17,9 +17,6 @@ pub struct IdentityResult {
   /// The identity type.
   #[serde(rename = "type")]
   _type: String,
-  /// The owner of the identity.
-  #[serde(rename = "managedBy", skip_serializing_if="Option::is_none")]
-  managed_by: Option<String>,
   #[serde(rename = "spec", skip_serializing_if="Option::is_none")]
   spec: Option<crate::models::IdentitySpec>
 }
@@ -28,7 +25,6 @@ impl IdentityResult {
   pub fn new(_type: String) -> IdentityResult {
     IdentityResult {
       _type: _type,
-      managed_by: None,
       spec: None
     }
   }
@@ -46,23 +42,6 @@ impl IdentityResult {
     &self._type
   }
 
-
-  pub fn set_managed_by(&mut self, managed_by: String) {
-    self.managed_by = Some(managed_by);
-  }
-
-  pub fn with_managed_by(mut self, managed_by: String) -> IdentityResult {
-    self.managed_by = Some(managed_by);
-    self
-  }
-
-  pub fn managed_by(&self) -> Option<&String> {
-    self.managed_by.as_ref()
-  }
-
-  pub fn reset_managed_by(&mut self) {
-    self.managed_by = None;
-  }
 
   pub fn set_spec(&mut self, spec: crate::models::IdentitySpec) {
     self.spec = Some(spec);

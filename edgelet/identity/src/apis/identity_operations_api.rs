@@ -66,27 +66,27 @@ where
         // send request
         Box::new(
         configuration
-        .client
-        .request(req)
-        .map_err(Error::from)
-        .and_then(|resp| {
-        let (http::response::Parts { status, .. }, body) = resp.into_parts();
-        body.concat2()
-        .and_then(move |body| Ok((status, body)))
-        .map_err(Error::from)
-        })
-        .and_then(|(status, body)| {
-        if status.is_success() {
-        Ok(body)
-        } else {
-        Err(Error::from((status, &*body)))
-        }
-        })
-        .and_then(|body| {
-        let parsed: Result<crate::models::IdentityResult, _> =
-        serde_json::from_slice(&body);
-        parsed.map_err(Error::from)
-        }),
+            .client
+                .request(req)
+                .map_err(Error::from)
+                .and_then(|resp| {
+                    let (http::response::Parts { status, .. }, body) = resp.into_parts();
+                    body.concat2()
+                    .and_then(move |body| Ok((status, body)))
+                    .map_err(Error::from)
+                })
+                .and_then(|(status, body)| {
+                    if status.is_success() {
+                    Ok(body)
+                    } else {
+                    Err(Error::from((status, &*body)))
+                    }
+                })
+                .and_then(|body| {
+                    let parsed: Result<crate::models::IdentityResult, _> =
+                    serde_json::from_slice(&body);
+                    parsed.map_err(Error::from)
+                }),
         )
     }
 

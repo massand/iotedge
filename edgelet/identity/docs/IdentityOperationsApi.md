@@ -4,7 +4,7 @@ All URIs are relative to *http://localhost*
 
 Method | HTTP request | Description
 ------------- | ------------- | -------------
-[**get_current_identity**](IdentityOperationsApi.md#get_current_identity) | **Get** /identities/identity | Get primary cloud identity for authenticated workload
+[**get_current_identity**](IdentityOperationsApi.md#get_current_identity) | **Get** /identity | Get primary cloud identity for authenticated workload (caller)
 
 
 # **get_current_identity**
