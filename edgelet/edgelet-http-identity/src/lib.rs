@@ -1,5 +1,5 @@
 use crate::error::{Error, ErrorKind};
-use edgelet_core::{Authenticator, KeyStore, ModuleRuntime, Policy, WorkloadConfig};
+use edgelet_core::{Authenticator, ModuleRuntime, Policy, WorkloadConfig};
 use edgelet_http::authentication::Authentication;
 use edgelet_http::authorization::Authorization;
 use edgelet_http::route::{Builder, RegexRecognizer, Router, RouterService};
@@ -14,20 +14,32 @@ use hyper::{Body, Request, Response};
 mod error;
 mod identity;
 
+pub trait IntoResponse {
+    fn into_response(self) -> Response<Body>;
+}
+
+impl IntoResponse for Response<Body> {
+    fn into_response(self) -> Response<Body> {
+        self
+    }
+}
+
 #[derive(Clone)]
 pub struct IdentityService {
     inner: RouterService<RegexRecognizer>,
 }
 
 impl IdentityService {
-    pub fn new<M, W>(runtime: &M, config: W) -> impl Future<Item = Self, Error = Error>
+    pub fn new<M, W>(
+        runtime: &M,
+        config: W) -> impl Future<Item = Self, Error = Error>
     where
         M: ModuleRuntime + Authenticator<Request = Request<Body>> + Clone + Send + Sync + 'static,
         W: WorkloadConfig + Clone + Send + Sync + 'static,
         <M::AuthenticateFuture as Future>::Error: Fail,
     {
         let router = router!(
-            get   Version2018_06_28 runtime Policy::Anonymous => "/identities/identity" => IdentityHandler::new(config.clone()),
+            get   Version2020_06_01 runtime Policy::Anonymous => "/identity" => IdentityHandler::new(config.clone()),
         );
 
         router.new_service().then(|inner| {

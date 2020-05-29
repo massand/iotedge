@@ -26,9 +26,9 @@ where
     fn handle(
         &self,
         req: Request<Body>,
-        params: Parameters,
+        _params: Parameters,
     ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
-        let config = self.config.clone();
+        let _config = self.config.clone();
 
         let body = req
             .extensions()

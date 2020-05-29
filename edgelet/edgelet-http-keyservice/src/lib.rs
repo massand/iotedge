@@ -22,7 +22,7 @@ pub struct KeyService {
 impl KeyService {
     pub fn new<M, W, K>(
         runtime: &M,
-        config: W,
+        _config: W,
         key_store: &K,
     ) -> impl Future<Item = Self, Error = Error>
     where
@@ -32,7 +32,7 @@ impl KeyService {
         <M::AuthenticateFuture as Future>::Error: Fail,
     {
         let router = router!(
-            get   Version2018_06_28 runtime Policy::Anonymous => "/sign" => SignHandler::new(key_store.clone()),
+            get   Version2020_06_01 runtime Policy::Anonymous => "/sign" => SignHandler::new(key_store.clone()),
         );
 
         router.new_service().then(|inner| {

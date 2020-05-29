@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft. All rights reserved.
 use crate::error::{Error, ErrorKind};
 use edgelet_core::crypto::KeyStore;
-use edgelet_core::{AuthId, WorkloadConfig};
+use edgelet_core::{AuthId};
 use edgelet_http::route::{Handler, Parameters};
 use edgelet_http::Error as HttpError;
 use failure::ResultExt;
@@ -32,9 +32,9 @@ where
     fn handle(
         &self,
         req: Request<Body>,
-        params: Parameters,
+        _params: Parameters,
     ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
-        let key_store = self.key_store.clone();
+        let _key_store = self.key_store.clone();
 
         let body = req
             .extensions()
