@@ -7,6 +7,8 @@ members = [
     "edgelet-hsm",
     "edgelet-http",
     "edgelet-http-external-provisioning",
+    "edgelet-http-identity",
+    "edgelet-http-keyservice",
     "edgelet-http-mgmt",
     "edgelet-http-workload",
     "edgelet-iothub",
