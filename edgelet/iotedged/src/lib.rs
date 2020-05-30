@@ -1565,7 +1565,7 @@ where
 
     // Wait for the watchdog to finish, and then send signal to the workload and management services.
     // This way the edgeAgent can finish shutting down all modules.
-    let edge_rt_with_cleanup = edge_rt_with_mgmt_signal
+    let _edge_rt_with_cleanup = edge_rt_with_mgmt_signal
         .select2(restart_rx)
         .then(move |res| {
             mgmt_tx.send(()).unwrap_or(());
@@ -1594,13 +1594,21 @@ where
     tokio_runtime.spawn(shutdown);
 
     let services = _mgmt
-        .join4(_key_svc, edge_rt_with_cleanup, expiration_timer)
+        .join4(expiration_timer, _key_svc, _identity_svc)
         .then(|result| match result {
-            Ok(((), (), (code, should_reprovision), ())) => Ok((code, should_reprovision)),
+            Ok(((), (), (), ())) => Ok(()),
             Err(err) => Err(err),
         });
-    let (restart_code, should_reprovision) = tokio_runtime.block_on(services)?;
-    Ok((restart_code, should_reprovision))
+    // let services = _mgmt
+    //     .join4(_key_svc, edge_rt_with_cleanup, expiration_timer)
+    //     .then(|result| match result {
+    //         Ok(((), (), (code, should_reprovision), ())) => Ok((code, should_reprovision)),
+    //         Err(err) => Err(err),
+    //     });
+    // let (restart_code, should_reprovision) = tokio_runtime.block_on(services)?;
+    // Ok((restart_code, should_reprovision))
+    tokio_runtime.block_on(services)?;
+    Ok((StartApiReturnStatus::Shutdown, false))
 }
 
 fn init_runtime<M>(

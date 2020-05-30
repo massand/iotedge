@@ -10,6 +10,7 @@ use hyper::service::{NewService, Service};
 
 use self::sign::SignHandler;
 use hyper::{Body, Request, Response};
+use edgelet_core::crypto::Sign;
 
 mod error;
 mod sign;
@@ -37,7 +38,8 @@ impl KeyService {
         key_store: &K,
     ) -> impl Future<Item = Self, Error = Error>
     where
-        K: KeyStore + Clone + Send + Sync + 'static,
+        K: 'static + KeyStore + Clone + Sync + Send,
+        K::Key: Sign,
         M: ModuleRuntime + Authenticator<Request = Request<Body>> + Clone + Send + Sync + 'static,
         W: WorkloadConfig + Clone + Send + Sync + 'static,
         <M::AuthenticateFuture as Future>::Error: Fail,
