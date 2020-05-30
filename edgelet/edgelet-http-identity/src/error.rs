@@ -12,6 +12,9 @@ pub struct Error {
 pub enum ErrorKind {
     #[fail(display = "Could not start identity service")]
     StartService,
+
+    #[fail(display = "Could not get identity")]
+    GetIdentity,
 }
 
 impl Fail for Error {

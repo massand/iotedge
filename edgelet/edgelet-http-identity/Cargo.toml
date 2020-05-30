@@ -19,4 +19,4 @@ url = "1.7"
 
 edgelet-core = { path = "../edgelet-core" }
 edgelet-http = { path = "../edgelet-http" }
-##identityservice = { path = "../identityservice" }
+identity = { path = "../identity" }
