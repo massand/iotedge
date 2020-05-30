@@ -9,10 +9,21 @@ use futures::{Future, future};
 use hyper::service::{NewService, Service};
 
 use self::sign::SignHandler;
-use hyper::{Body, Request};
+use hyper::{Body, Request, Response};
 
 mod error;
 mod sign;
+
+pub trait IntoResponse {
+    fn into_response(self) -> Response<Body>;
+}
+
+impl IntoResponse for Response<Body> {
+    fn into_response(self) -> Response<Body> {
+        self
+    }
+}
+
 
 #[derive(Clone)]
 pub struct KeyService {

@@ -12,6 +12,9 @@ pub struct Error {
 pub enum ErrorKind {
     #[fail(display = "Could not start key service")]
     StartService,
+
+    #[fail(display = "Could not get signature")]
+    GetSignature,
 }
 
 impl Fail for Error {

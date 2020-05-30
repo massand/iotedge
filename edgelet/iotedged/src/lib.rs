@@ -1492,7 +1492,7 @@ where
         workload_config.clone(),
     );
 
-    let identity_svc = start_identity::<M, _, _>(
+    let _identity_svc = start_identity::<M, _, _>(
         settings,
         runtime,
         workload_config.clone(),
@@ -1594,7 +1594,7 @@ where
     tokio_runtime.spawn(shutdown);
 
     let services = _mgmt
-        .join4(identity_svc, edge_rt_with_cleanup, expiration_timer)
+        .join4(_key_svc, edge_rt_with_cleanup, expiration_timer)
         .then(|result| match result {
             Ok(((), (), (code, should_reprovision), ())) => Ok((code, should_reprovision)),
             Err(err) => Err(err),
