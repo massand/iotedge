@@ -5,12 +5,12 @@ use edgelet_http::authorization::Authorization;
 use edgelet_http::route::{Builder, RegexRecognizer, Router, RouterService};
 use edgelet_http::{router, Version};
 use failure::{Compat, Fail, ResultExt};
-use futures::{Future, future};
+use futures::{future, Future};
 use hyper::service::{NewService, Service};
 
 use self::sign::SignHandler;
-use hyper::{Body, Request, Response};
 use edgelet_core::crypto::Sign;
+use hyper::{Body, Request, Response};
 
 mod error;
 mod sign;
@@ -24,7 +24,6 @@ impl IntoResponse for Response<Body> {
         self
     }
 }
-
 
 #[derive(Clone)]
 pub struct KeyService {
@@ -61,7 +60,9 @@ impl Service for KeyService {
     type Error = <RouterService<RegexRecognizer> as Service>::Error;
     type Future = <RouterService<RegexRecognizer> as Service>::Future;
 
-    fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future { self.inner.call(req)}
+    fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
+        self.inner.call(req)
+    }
 }
 
 impl NewService for KeyService {
@@ -72,5 +73,7 @@ impl NewService for KeyService {
     type Future = future::FutureResult<Self::Service, Self::InitError>;
     type InitError = Compat<Error>;
 
-    fn new_service(&self) -> Self::Future { future::ok(self.clone())}
+    fn new_service(&self) -> Self::Future {
+        future::ok(self.clone())
+    }
 }

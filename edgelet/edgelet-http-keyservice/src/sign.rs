@@ -25,7 +25,7 @@ impl<K: KeyStore> SignHandler<K> {
 impl<K> Handler<Parameters> for SignHandler<K>
 where
     K: 'static + KeyStore + Clone + Sync + Send,
-    K::Key: Sign + Send,
+    K::Key: Sign,
 {
     fn handle(
         &self,
@@ -37,7 +37,7 @@ where
         let response = req
             .into_body()
             .concat2()
-            .then(|b| {
+            .then(move |b| {
                 let b = b.context(ErrorKind::MalformedRequestBody)?;
                 let request = serde_json::from_slice::<SignRequest>(&b)
                     .context(ErrorKind::MalformedRequestBody)?;
