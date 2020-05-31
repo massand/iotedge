@@ -4,7 +4,7 @@ use crate::error::{Error, ErrorKind};
 use edgelet_core::{AuthId, WorkloadConfig};
 use edgelet_http::route::{Handler, Parameters};
 use edgelet_http::Error as HttpError;
-use failure::{ResultExt, Fail};
+use failure::{Fail, ResultExt};
 use futures::{future, Future};
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Body, Request, Response, StatusCode};
@@ -33,14 +33,19 @@ where
     ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
         let _config = self.config.clone();
 
-        let identityauth = identity::models::Credentials::new("sas".to_string(), "primary".to_string());
-        let identityspec = IdentitySpec::new(_config.iot_hub_name().to_string(), _config.device_id().to_string(), identityauth);
-        let mut identityresult = IdentityResult::new("aziot".to_string());
-        identityresult.set_spec(identityspec);
+        let identity_auth =
+            identity::models::Credentials::new("sas".to_string(), "primary".to_string());
+        let identity_spec = IdentitySpec::new(
+            _config.iot_hub_name().to_string(),
+            _config.device_id().to_string(),
+            identity_auth,
+        );
+        let mut identity_result = IdentityResult::new("aziot".to_string());
+        identity_result.set_spec(identity_spec);
 
-        let body = serde_json::to_string(&identityresult).context(
-            ErrorKind::GetIdentity
-        ).unwrap();
+        let body = serde_json::to_string(&identity_result)
+            .context(ErrorKind::GetIdentity)
+            .unwrap();
 
         let response = Response::builder()
             .status(StatusCode::OK)

@@ -5,7 +5,7 @@ use edgelet_http::authorization::Authorization;
 use edgelet_http::route::{Builder, RegexRecognizer, Router, RouterService};
 use edgelet_http::{router, Version};
 use failure::{Compat, Fail, ResultExt};
-use futures::{Future, future};
+use futures::{future, Future};
 use hyper::service::{NewService, Service};
 
 use self::identity::IdentityHandler;
@@ -30,9 +30,7 @@ pub struct IdentityService {
 }
 
 impl IdentityService {
-    pub fn new<M, W>(
-        runtime: &M,
-        config: W) -> impl Future<Item = Self, Error = Error>
+    pub fn new<M, W>(runtime: &M, config: W) -> impl Future<Item = Self, Error = Error>
     where
         M: ModuleRuntime + Authenticator<Request = Request<Body>> + Clone + Send + Sync + 'static,
         W: WorkloadConfig + Clone + Send + Sync + 'static,
@@ -55,7 +53,9 @@ impl Service for IdentityService {
     type Error = <RouterService<RegexRecognizer> as Service>::Error;
     type Future = <RouterService<RegexRecognizer> as Service>::Future;
 
-    fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future { self.inner.call(req)}
+    fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
+        self.inner.call(req)
+    }
 }
 
 impl NewService for IdentityService {
@@ -66,5 +66,7 @@ impl NewService for IdentityService {
     type Future = future::FutureResult<Self::Service, Self::InitError>;
     type InitError = Compat<Error>;
 
-    fn new_service(&self) -> Self::Future { future::ok(self.clone())}
+    fn new_service(&self) -> Self::Future {
+        future::ok(self.clone())
+    }
 }
