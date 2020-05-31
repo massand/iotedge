@@ -41,10 +41,9 @@ where
                 let b = b.context(ErrorKind::MalformedRequestBody)?;
                 let request = serde_json::from_slice::<SignRequest>(&b)
                     .context(ErrorKind::MalformedRequestBody)?;
-                let device_key = _key_store.get(&KeyIdentity::Device, "primary").unwrap();
-
-                let message = "primary";
-
+                let message = request.parameters().message();
+                let key_handle = request.key_handle();
+                let device_key = _key_store.get(&KeyIdentity::Device, key_handle).unwrap();
                 let signature = device_key
                     .sign(SignatureAlgorithm::HMACSHA256, &message.as_bytes())
                     .map(|s| base64::encode(s.as_bytes()))
