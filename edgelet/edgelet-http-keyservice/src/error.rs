@@ -24,6 +24,9 @@ pub enum ErrorKind {
 
     #[fail(display = "Request body is malformed")]
     MalformedRequestBody,
+
+    #[fail(display = "Device key not found")]
+    DeviceKeyNotFound,
 }
 
 impl Fail for Error {
