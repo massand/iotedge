@@ -2186,7 +2186,7 @@ fn start_identity<M, W, CE>(
     info!("Starting identity API...");
 
     let label = "ident".to_string();
-    // let url = settings.listen().workload_uri().clone();
+    //TODO: Add identity service socket configuration
     let url = Url::parse("http://172.17.0.1:8082").unwrap();
 
     let min_protocol_version = settings.listen().min_tls_version();
@@ -2240,7 +2240,7 @@ where
     info!("Starting key service API...");
 
     let label = "key".to_string();
-    // let url = settings.listen().workload_uri().clone();
+    //TODO: Add identity service socket configuration
     let url = Url::parse("http://172.17.0.1:8083").unwrap();
 
     let min_protocol_version = settings.listen().min_tls_version();
