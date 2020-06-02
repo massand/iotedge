@@ -17,15 +17,15 @@ pub struct IdentityResult {
   /// The identity type.
   #[serde(rename = "type")]
   _type: String,
-  #[serde(rename = "spec", skip_serializing_if="Option::is_none")]
-  spec: Option<crate::models::IdentitySpec>
+  #[serde(rename = "spec")]
+  spec: crate::models::IdentitySpec
 }
 
 impl IdentityResult {
-  pub fn new(_type: String) -> IdentityResult {
+  pub fn new(_type: String, spec: crate::models::IdentitySpec) -> IdentityResult {
     IdentityResult {
       _type: _type,
-      spec: None
+      spec: spec
     }
   }
 
@@ -44,21 +44,18 @@ impl IdentityResult {
 
 
   pub fn set_spec(&mut self, spec: crate::models::IdentitySpec) {
-    self.spec = Some(spec);
+    self.spec = spec;
   }
 
   pub fn with_spec(mut self, spec: crate::models::IdentitySpec) -> IdentityResult {
-    self.spec = Some(spec);
+    self.spec = spec;
     self
   }
 
-  pub fn spec(&self) -> Option<&crate::models::IdentitySpec> {
-    self.spec.as_ref()
+  pub fn spec(&self) -> &crate ::models::IdentitySpec {
+    &self.spec
   }
 
-  pub fn reset_spec(&mut self) {
-    self.spec = None;
-  }
 
 }
 

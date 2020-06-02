@@ -138,7 +138,7 @@ mod tests {
             .unwrap();
 
         // act
-        let response = handler.handle(request, Parameters::new()).wait().unwrap();
+        let response = handler.handle(request, Parameters::default()).wait().unwrap();
 
         // assert
         assert_eq!(StatusCode::BAD_REQUEST, response.status());
@@ -175,7 +175,7 @@ mod tests {
             .unwrap();
 
         // act
-        let response = handler.handle(request, Parameters::new()).wait().unwrap();
+        let response = handler.handle(request, Parameters::default()).wait().unwrap();
 
         // assert
         assert_eq!(StatusCode::NOT_FOUND, response.status());
@@ -213,7 +213,7 @@ mod tests {
             .unwrap();
 
         // act
-        let response = handler.handle(request, Parameters::new()).wait().unwrap();
+        let response = handler.handle(request, Parameters::default()).wait().unwrap();
 
         // assert
         assert_eq!(StatusCode::BAD_REQUEST, response.status());
@@ -251,7 +251,7 @@ mod tests {
             .unwrap();
 
         // act
-        let response = handler.handle(request, Parameters::new()).wait().unwrap();
+        let response = handler.handle(request, Parameters::default()).wait().unwrap();
 
         // assert
         let expected = "riPI9XPTbHodbLyLC+vlLgZm3PFPoEQHMo+5RLj3qC0=";

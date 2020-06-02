@@ -2,6 +2,11 @@
 
 use failure::{Backtrace, Context, Fail};
 use std::fmt::{self, Display};
+use crate::IntoResponse;
+use hyper::{Response, Body, StatusCode};
+use identity::models::ErrorResponse;
+use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
+use log::error;
 
 #[derive(Debug)]
 pub struct Error {
@@ -50,5 +55,45 @@ impl From<ErrorKind> for Error {
 impl From<Context<ErrorKind>> for Error {
     fn from(inner: Context<ErrorKind>) -> Self {
         Error { inner }
+    }
+}
+
+impl IntoResponse for Error {
+    fn into_response(self) -> Response<Body> {
+        let mut fail: &dyn Fail = &self;
+        let mut message = self.to_string();
+        while let Some(cause) = fail.cause() {
+            message.push_str(&format!("\n\tcaused by: {}", cause.to_string()));
+            fail = cause;
+        }
+
+        let status_code = match *self.kind() {
+            ErrorKind::GetIdentity => StatusCode::NOT_FOUND,
+            _ => {
+                error!("Internal server error: {}", message);
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
+        };
+
+        // Per the RFC, status code NotModified should not have a body
+        let body = if status_code == StatusCode::NOT_MODIFIED {
+            String::new()
+        } else {
+            serde_json::to_string(&ErrorResponse::new(message))
+                .expect("serialization of ErrorResponse failed.")
+        };
+
+        let mut response = Response::builder();
+        response
+            .status(status_code)
+            .header(CONTENT_LENGTH, body.len().to_string().as_str());
+
+        if !body.is_empty() {
+            response.header(CONTENT_TYPE, "application/json");
+        }
+
+        response
+            .body(body.into())
+            .expect("response builder failure")
     }
 }
