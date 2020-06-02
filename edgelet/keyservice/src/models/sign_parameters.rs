@@ -22,7 +22,7 @@ pub struct SignParameters {
 impl SignParameters {
   pub fn new(message: String) -> SignParameters {
     SignParameters {
-      message: message
+      message
     }
   }
 

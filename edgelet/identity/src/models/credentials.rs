@@ -25,8 +25,8 @@ pub struct Credentials {
 impl Credentials {
   pub fn new(auth_type: String, key_handle: String) -> Credentials {
     Credentials {
-      auth_type: auth_type,
-      key_handle: key_handle
+      auth_type,
+      key_handle
     }
   }
 

@@ -27,9 +27,9 @@ pub struct SignRequest {
 impl SignRequest {
   pub fn new(key_handle: String, algorithm: String, parameters: crate::models::SignParameters) -> SignRequest {
     SignRequest {
-      key_handle: key_handle,
-      algorithm: algorithm,
-      parameters: parameters
+      key_handle,
+      algorithm,
+      parameters
     }
   }
 

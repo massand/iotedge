@@ -37,7 +37,7 @@ impl IdentityService {
         <M::AuthenticateFuture as Future>::Error: Fail,
     {
         let router = router!(
-            get   Version2020_06_01 runtime Policy::Anonymous => "/identity" => IdentityHandler::new(config.clone()),
+            get   Version2020_06_01 runtime Policy::Anonymous => "/identity" => IdentityHandler::new(config),
         );
 
         router.new_service().then(|inner| {

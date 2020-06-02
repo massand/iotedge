@@ -14,7 +14,7 @@ impl APIClient {
     let configuration = Arc::new(configuration);
 
     APIClient {
-      identity_operations_api: Box::new(crate::apis::IdentityOperationsApiClient::new(configuration.clone())),
+      identity_operations_api: Box::new(crate::apis::IdentityOperationsApiClient::new(configuration)),
     }
   }
 

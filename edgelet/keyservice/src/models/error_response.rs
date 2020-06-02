@@ -21,7 +21,7 @@ pub struct ErrorResponse {
 impl ErrorResponse {
   pub fn new(message: String) -> ErrorResponse {
     ErrorResponse {
-      message: message
+      message
     }
   }
 

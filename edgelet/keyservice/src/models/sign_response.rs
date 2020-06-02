@@ -22,7 +22,7 @@ pub struct SignResponse {
 impl SignResponse {
   pub fn new(signature: String) -> SignResponse {
     SignResponse {
-      signature: signature
+      signature
     }
   }
 

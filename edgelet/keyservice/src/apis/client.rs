@@ -14,7 +14,7 @@ impl APIClient {
     let configuration = Arc::new(configuration);
 
     APIClient {
-      key_operations_api: Box::new(crate::apis::KeyOperationsApiClient::new(configuration.clone())),
+      key_operations_api: Box::new(crate::apis::KeyOperationsApiClient::new(configuration)),
     }
   }
 

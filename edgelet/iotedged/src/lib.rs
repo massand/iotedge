@@ -1500,11 +1500,10 @@ where
     let key_svc = start_key_service::<M,_,_,_>(
         settings,
         runtime,
-        workload_config.clone(),
+        workload_config,
         &key_store.clone(),
         key_rx,
-        cert_manager.clone()
-    );
+        cert_manager);
 
     let (runt_tx, runt_rx) = oneshot::channel();
     let edge_rt = start_runtime::<_, _, M>(

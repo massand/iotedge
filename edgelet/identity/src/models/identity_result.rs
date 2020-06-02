@@ -24,8 +24,8 @@ pub struct IdentityResult {
 impl IdentityResult {
   pub fn new(_type: String, spec: crate::models::IdentitySpec) -> IdentityResult {
     IdentityResult {
-      _type: _type,
-      spec: spec
+      _type,
+      spec
     }
   }
 

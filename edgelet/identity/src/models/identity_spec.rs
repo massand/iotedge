@@ -35,11 +35,11 @@ impl IdentitySpec {
   /// The identity specification.
   pub fn new(hub_name: String, device_id: String, auth: crate::models::Credentials) -> IdentitySpec {
     IdentitySpec {
-      hub_name: hub_name,
-      device_id: device_id,
+      hub_name,
+      device_id,
       module_id: None,
       gen_id: None,
-      auth: auth
+      auth
     }
   }
 
