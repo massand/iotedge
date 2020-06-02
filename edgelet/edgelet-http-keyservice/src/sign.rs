@@ -10,7 +10,7 @@ use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Body, Request, Response, StatusCode};
 
 use crate::IntoResponse;
-use keyservice::models::SignRequest;
+use keyservice::models::{SignRequest, SignResponse};
 
 pub struct SignHandler<K: KeyStore> {
     key_store: K,
@@ -54,7 +54,9 @@ where
                     .context(ErrorKind::GetSignature)
                     .unwrap();
 
-                let body = serde_json::to_string(&signature.as_bytes())
+                let sign_response = SignResponse::new(signature);
+
+                let body = serde_json::to_string(&sign_response)
                     .context(ErrorKind::GetSignature)
                     .unwrap();
 
@@ -73,29 +75,26 @@ where
     }
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
     use edgelet_core::crypto::MemoryKey;
     use crate::sign::SignHandler;
     use edgelet_http::route::{Parameters, Handler};
     use futures::{Stream, Future};
-    use keyservice::models::ErrorResponse;
-    use std::sync::{Arc, Mutex};
-    use serde_json::ser::State;
-    use edgelet_core::{KeyStore, KeyIdentity};
-    use sha2::Digest;
+    use keyservice::models::{ErrorResponse, SignRequest, SignParameters, SignResponse};
+    use edgelet_core::{KeyStore, KeyIdentity, ErrorKind as CoreErrorKind};
+    use hyper::{Request, StatusCode};
+    use edgelet_core::Error as CoreError;
 
     #[derive(Clone, Debug)]
     struct TestKeyStore {
         key: MemoryKey,
-        state: Arc<Mutex<State>>,
     }
 
     impl TestKeyStore {
         pub fn new(key: MemoryKey) -> Self {
             TestKeyStore {
                 key,
-                state: Arc::new(Mutex::new(State::new())),
             }
         }
     }
@@ -103,29 +102,36 @@ mod tests {
     impl KeyStore for TestKeyStore {
         type Key = MemoryKey;
 
-        fn get(&self, identity: &KeyIdentity, key_name: &str) -> Result<Self::Key, CoreError> {
-            let mut state = self.state.lock().unwrap();
-            {
-                let state = &mut *state;
-                state.last_id = match identity {
-                    KeyIdentity::Device => "".to_string(),
-                    KeyIdentity::Module(ref m) => m.to_string(),
-                };
-                state.last_key_name = key_name.to_string();
-            }
-            drop(state);
+        fn get(&self, _identity: &KeyIdentity, _key_name: &str) -> Result<Self::Key, CoreError> {
             Ok(self.key.clone())
         }
     }
 
-    #[test]
-    fn bad_body() {
-        // arrange
-        let key = MemoryKey::new("key");
-        let store = TestKeyStore::new(key);
-        let handler = SignHandler::new(store);
+    #[derive(Clone, Debug)]
+    struct NullKeyStore;
 
-        let body = "invalid";
+    impl NullKeyStore {
+        pub fn new() -> Self {
+            NullKeyStore
+        }
+    }
+
+    impl KeyStore for NullKeyStore {
+        type Key = MemoryKey;
+
+        fn get(&self, _identity: &KeyIdentity, _key_name: &str) -> Result<Self::Key, CoreError> {
+            Err(CoreError::from(CoreErrorKind::KeyStoreItemNotFound))
+        }
+    }
+
+    #[test]
+    fn bad_body_not_json() {
+        // arrange
+        let key = MemoryKey::new("");
+        let key_store = TestKeyStore::new(key);
+        let handler = SignHandler::new(key_store);
+
+        let body = "not valid json";
 
         let request = Request::post("http://localhost/sign")
             .body(body.into())
@@ -142,8 +148,120 @@ mod tests {
             .and_then(|b| {
                 let error_response: ErrorResponse = serde_json::from_slice(&b).unwrap();
                 let expected =
-                    "Request body is malformed\n\tcaused by: expected value at line 1 column 1";
+                    "Request body is malformed\n\tcaused by: expected ident at line 1 column 2";
                 assert_eq!(expected, error_response.message());
+                Ok(())
+            })
+            .wait()
+            .unwrap();
+    }
+
+    #[test]
+    fn key_not_found() {
+        // arrange
+        let key_store = NullKeyStore::new();
+        let handler = SignHandler::new(key_store);
+
+        let sign_request = SignRequest::new(
+            "primary".to_string(),
+            "HMAC-SHA256".to_string(),
+            SignParameters::new(base64::encode("12345")),
+        );
+
+        let body = serde_json::to_string(&sign_request).unwrap();
+
+        let request = Request::post("http://localhost/sign")
+            .body(body.into())
+            .unwrap();
+
+        // act
+        let response = handler.handle(request, Parameters::new()).wait().unwrap();
+
+        // assert
+        assert_eq!(StatusCode::NOT_FOUND, response.status());
+        response
+            .into_body()
+            .concat2()
+            .and_then(|b| {
+                let error_response: ErrorResponse = serde_json::from_slice(&b).unwrap();
+                let expected =
+                    "Device key not found\n\tcaused by: Item not found.";
+                assert_eq!(expected, error_response.message());
+                Ok(())
+            })
+            .wait()
+            .unwrap();
+    }
+
+    #[test]
+    fn bad_body_invalid_encoding() {
+        // arrange
+        let key = MemoryKey::new("");
+        let key_store = TestKeyStore::new(key);
+        let handler = SignHandler::new(key_store);
+
+        let sign_request = SignRequest::new(
+            "primary".to_string(),
+            "HMAC-SHA256".to_string(),
+            SignParameters::new("not_base64_encoded".to_string()),
+        );
+
+        let body = serde_json::to_string(&sign_request).unwrap();
+
+        let request = Request::post("http://localhost/sign")
+            .body(body.into())
+            .unwrap();
+
+        // act
+        let response = handler.handle(request, Parameters::new()).wait().unwrap();
+
+        // assert
+        assert_eq!(StatusCode::BAD_REQUEST, response.status());
+        response
+            .into_body()
+            .concat2()
+            .and_then(|b| {
+                let error_response: ErrorResponse = serde_json::from_slice(&b).unwrap();
+                let expected =
+                    "Request body is malformed\n\tcaused by: Invalid byte 95, offset 3.";
+                assert_eq!(expected, error_response.message());
+                Ok(())
+            })
+            .wait()
+            .unwrap();
+    }
+
+    #[test]
+    fn success() {
+        // arrange
+        let key = MemoryKey::new("");
+        let key_store = TestKeyStore::new(key);
+        let handler = SignHandler::new(key_store);
+
+        let sign_request = SignRequest::new(
+            "primary".to_string(),
+            "HMAC-SHA256".to_string(),
+            SignParameters::new(base64::encode("12345")),
+        );
+
+        let body = serde_json::to_string(&sign_request).unwrap();
+
+        let request = Request::post("http://localhost/sign")
+            .body(body.into())
+            .unwrap();
+
+        // act
+        let response = handler.handle(request, Parameters::new()).wait().unwrap();
+
+        // assert
+        let expected = "riPI9XPTbHodbLyLC+vlLgZm3PFPoEQHMo+5RLj3qC0=";
+        assert_eq!(StatusCode::OK, response.status());
+        response
+            .into_body()
+            .concat2()
+            .and_then(|b| {
+                let sign_response: SignResponse = serde_json::from_slice(&b).unwrap();
+                assert_eq!(expected, sign_response.signature());
                 Ok(())
             })
             .wait()

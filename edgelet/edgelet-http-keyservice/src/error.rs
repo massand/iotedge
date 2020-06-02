@@ -76,6 +76,7 @@ impl IntoResponse for Error {
 
         let status_code = match *self.kind() {
             ErrorKind::MalformedRequestBody => StatusCode::BAD_REQUEST,
+            ErrorKind::DeviceKeyNotFound => StatusCode::NOT_FOUND,
             _ => {
                 error!("Internal server error: {}", message);
                 StatusCode::INTERNAL_SERVER_ERROR

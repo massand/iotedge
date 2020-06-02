@@ -1,10 +1,10 @@
 // Copyright (c) Microsoft. All rights reserved.
 
 use crate::error::{Error, ErrorKind};
-use edgelet_core::{AuthId, WorkloadConfig};
+use edgelet_core::WorkloadConfig;
 use edgelet_http::route::{Handler, Parameters};
 use edgelet_http::Error as HttpError;
-use failure::{Fail, ResultExt};
+use failure::ResultExt;
 use futures::{future, Future};
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Body, Request, Response, StatusCode};
@@ -28,7 +28,7 @@ where
 {
     fn handle(
         &self,
-        req: Request<Body>,
+        _req: Request<Body>,
         _params: Parameters,
     ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
         let _config = self.config.clone();
