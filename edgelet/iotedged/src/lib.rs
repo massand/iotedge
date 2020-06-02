@@ -1471,7 +1471,7 @@ where
 
     let cert_manager = Arc::new(cert_manager);
 
-    let _mgmt = start_management::<_, _, _, M>(
+    let mgmt = start_management::<_, _, _, M>(
         settings,
         runtime,
         &id_man,
@@ -1480,11 +1480,9 @@ where
         mgmt_stop_and_reprovision_tx,
     );
 
-    let key_store_workload = key_store.clone();
-
-    let _workload = start_workload::<_, _, _, _, M>(
+    let workload = start_workload::<_, _, _, _, M>(
         settings,
-        &key_store_workload,
+        &key_store.clone(),
         runtime,
         work_rx,
         crypto,
@@ -1492,20 +1490,18 @@ where
         workload_config.clone(),
     );
 
-    let _identity_svc = start_identity::<M, _, _>(
+    let identity_svc = start_identity::<M, _, _>(
         settings,
         runtime,
         workload_config.clone(),
         ident_rx,
         cert_manager.clone());
 
-    let key_store_key_service = key_store.clone();
-
-    let _key_svc = start_key_service::<M,_,_,_>(
+    let key_svc = start_key_service::<M,_,_,_>(
         settings,
         runtime,
         workload_config.clone(),
-        &key_store_key_service,
+        &key_store.clone(),
         key_rx,
         cert_manager.clone()
     );
@@ -1565,7 +1561,7 @@ where
 
     // Wait for the watchdog to finish, and then send signal to the workload and management services.
     // This way the edgeAgent can finish shutting down all modules.
-    let _edge_rt_with_cleanup = edge_rt_with_mgmt_signal
+    let edge_rt_with_cleanup = edge_rt_with_mgmt_signal
         .select2(restart_rx)
         .then(move |res| {
             mgmt_tx.send(()).unwrap_or(());
@@ -1593,22 +1589,14 @@ where
     });
     tokio_runtime.spawn(shutdown);
 
-    let services = _mgmt
-        .join4(expiration_timer, _key_svc, _identity_svc)
+    let services = mgmt
+        .join(workload.join5(edge_rt_with_cleanup, expiration_timer, key_svc, identity_svc))
         .then(|result| match result {
-            Ok(((), (), (), ())) => Ok(()),
+            Ok(((), ((), (restart_code, should_reprovision), (), (), ()))) => Ok((restart_code, should_reprovision)),
             Err(err) => Err(err),
         });
-    // let services = _mgmt
-    //     .join4(_key_svc, edge_rt_with_cleanup, expiration_timer)
-    //     .then(|result| match result {
-    //         Ok(((), (), (code, should_reprovision), ())) => Ok((code, should_reprovision)),
-    //         Err(err) => Err(err),
-    //     });
-    // let (restart_code, should_reprovision) = tokio_runtime.block_on(services)?;
-    // Ok((restart_code, should_reprovision))
-    tokio_runtime.block_on(services)?;
-    Ok((StartApiReturnStatus::Shutdown, false))
+    let (restart_code, should_reprovision) = tokio_runtime.block_on(services)?;
+    Ok((restart_code, should_reprovision))
 }
 
 fn init_runtime<M>(
