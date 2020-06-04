@@ -379,7 +379,7 @@ where
                         make_shutdown_signal(),
                         &crypto,
                         &mut tokio_runtime,
-                        $provisioning_result,
+                        $provisioning_result.clone(),
                     )?;
 
                     if should_reprovision {
@@ -1493,24 +1493,47 @@ where
         workload_config.clone(),
     );
 
-    let identity_svc = start_identity::<M, _, _>(
-        settings,
-        runtime,
-        workload_config.clone(),
-        ident_rx,
-        cert_manager.clone(),
-        &provisioning_result.clone()
-    );
+    // let identity_svc = start_identity::<M, _, _>(
+    //     settings,
+    //     runtime,
+    //     workload_config.clone(),
+    //     ident_rx,
+    //     cert_manager.clone(),
+    //     &provisioning_result.clone()
+    // );
+    let id_workload_config = workload_config.clone();
+    let id_cert_manager = cert_manager.clone();
+    let _identity_svc = start_optional_server(should_start_is(&provisioning_result.clone()), || { 
+        start_identity::<M, _, _>(
+            settings,
+            runtime,
+            id_workload_config,
+            ident_rx,
+            id_cert_manager,
+        )
+    });
+    
+    // let key_svc = start_key_service::<M, _, _, _>(
+    //     settings,
+    //     runtime,
+    //     workload_config,
+    //     &key_store.clone(),
+    //     key_rx,
+    //     cert_manager,
+    //     &provisioning_result
+    // );
 
-    let key_svc = start_key_service::<M, _, _, _>(
-        settings,
-        runtime,
-        workload_config,
-        &key_store.clone(),
-        key_rx,
-        cert_manager,
-        &provisioning_result
-    );
+    let _key_svc = start_optional_server(should_start_is(&provisioning_result.clone()), || { 
+        start_key_service::<M, _, _, _>(
+            settings,
+            runtime,
+            workload_config,
+            &key_store.clone(),
+            key_rx,
+            cert_manager,
+        )
+    });
+    
 
     let (runt_tx, runt_rx) = oneshot::channel();
     let edge_rt = start_runtime::<_, _, M>(
@@ -1596,14 +1619,15 @@ where
     tokio_runtime.spawn(shutdown);
 
     let services = mgmt
-        .join(workload.join5(
+        .join(workload.join4(
             edge_rt_with_cleanup,
             expiration_timer,
-            key_svc,
-            identity_svc,
+            _identity_svc,
+            // key_svc,
         ))
         .then(|result| match result {
-            Ok(((), ((), (restart_code, should_reprovision), (), (), ()))) => {
+            Ok(((), ((), (restart_code, should_reprovision), (), ()))) => {
+            // Ok(((), ((), (restart_code, should_reprovision), (), (), ()))) => {
                 Ok((restart_code, should_reprovision))
             }
             Err(err) => Err(err),
@@ -2184,8 +2208,8 @@ fn start_identity<M, W, CE>(
     config: W,
     shutdown: Receiver<()>,
     cert_manager: Arc<CertificateManager<CE>>,
-    provisioning_result: &ProvisioningResult,
-) -> impl Future<Item = (), Error = Error>
+) -> impl Future<Item = ()>
+// ) -> impl Future<>
 where
     CE: CreateCertificate + Clone,
     M: MakeModuleRuntime + 'static,
@@ -2198,7 +2222,6 @@ where
     <M::ModuleRuntime as ModuleRuntime>::Logs: Into<Body>,
     W: WorkloadConfig + Clone + Send + Sync + 'static,
 {
-    if should_start_is(provisioning_result) {
         info!("Starting identity API...");
         let label = "iden".to_string();
         let url = settings.listen().identityservice_uri().clone();
@@ -2228,7 +2251,6 @@ where
                 Ok(run)
             })
             .flatten()
-    }
 }
 
 fn start_key_service<M, W, K, CE>(
@@ -2238,7 +2260,6 @@ fn start_key_service<M, W, K, CE>(
     key_store: &K,
     shutdown: Receiver<()>,
     cert_manager: Arc<CertificateManager<CE>>,
-    provisioning_result: &ProvisioningResult,
 ) -> impl Future<Item = (), Error = Error>
 where
     CE: CreateCertificate + Clone,
@@ -2281,11 +2302,24 @@ where
         .flatten()
 }
 
+fn start_optional_server<F, A>(config: bool, f: F) -> impl Future<> 
+where 
+    F: FnOnce() -> A, 
+    A: Future<Item = ()>, 
+{
+    if config { 
+        Either::A(f())
+    }
+    else {
+        Either::B(future::ok(()))
+    }
+}
+
 fn should_start_is(provisioning_result: &ProvisioningResult) -> bool 
 {
     let credentials = provisioning_result.credentials();
     
-    if let AuthType::SymmetricKey(symmetric_key) = credentials.unwrap().auth_type() {
+    if let AuthType::SymmetricKey(_symmetric_key) = credentials.unwrap().auth_type() {
         true
     }
     else {
