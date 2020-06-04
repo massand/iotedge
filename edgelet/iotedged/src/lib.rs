@@ -359,9 +359,10 @@ where
                     $id_cert_thumprint,
                 )?;
 
+                let provisioning_result = $provisioning_result.clone();
                 let cfg = WorkloadData::new(
-                    $provisioning_result.hub_name().to_string(),
-                    $provisioning_result.device_id().to_string(),
+                    provisioning_result.hub_name().to_string(),
+                    provisioning_result.device_id().to_string(),
                     IOTEDGE_ID_CERT_MAX_DURATION_SECS,
                     IOTEDGE_SERVER_CERT_MAX_DURATION_SECS,
                 );
@@ -378,6 +379,7 @@ where
                         make_shutdown_signal(),
                         &crypto,
                         &mut tokio_runtime,
+                        $provisioning_result,
                     )?;
 
                     if should_reprovision {
@@ -1395,6 +1397,7 @@ fn start_api<HC, K, F, C, W, M>(
     shutdown_signal: F,
     crypto: &C,
     tokio_runtime: &mut tokio::runtime::Runtime,
+    provisioning_result: ProvisioningResult,
 ) -> Result<(StartApiReturnStatus, bool), Error>
 where
     F: Future<Item = (), Error = ()> + Send + 'static,
@@ -1496,6 +1499,7 @@ where
         workload_config.clone(),
         ident_rx,
         cert_manager.clone(),
+        &provisioning_result.clone()
     );
 
     let key_svc = start_key_service::<M, _, _, _>(
@@ -1505,6 +1509,7 @@ where
         &key_store.clone(),
         key_rx,
         cert_manager,
+        &provisioning_result
     );
 
     let (runt_tx, runt_rx) = oneshot::channel();
@@ -2179,6 +2184,7 @@ fn start_identity<M, W, CE>(
     config: W,
     shutdown: Receiver<()>,
     cert_manager: Arc<CertificateManager<CE>>,
+    provisioning_result: &ProvisioningResult,
 ) -> impl Future<Item = (), Error = Error>
 where
     CE: CreateCertificate + Clone,
@@ -2192,35 +2198,37 @@ where
     <M::ModuleRuntime as ModuleRuntime>::Logs: Into<Body>,
     W: WorkloadConfig + Clone + Send + Sync + 'static,
 {
-    info!("Starting identity API...");
+    if should_start_is(provisioning_result) {
+        info!("Starting identity API...");
+        let label = "iden".to_string();
+        let url = settings.listen().identityservice_uri().clone();
+    
+        let min_protocol_version = settings.listen().min_tls_version();
+    
+        let identity = IdentityService::new(runtime, config);
 
-    let label = "ident".to_string();
-    let url = settings.listen().identityservice_uri().clone();
-
-    let min_protocol_version = settings.listen().min_tls_version();
-
-    IdentityService::new(runtime, config)
-        .then(move |service| -> Result<_, Error> {
-            let service = service.context(ErrorKind::Initialize(
-                InitializeErrorReason::IdentityService,
-            ))?;
-            let service = LoggingService::new(label, service);
-
-            let tls_params = TlsAcceptorParams::new(&cert_manager, min_protocol_version);
-
-            let run = Http::new()
-                .bind_url(url.clone(), service, Some(tls_params))
-                .map_err(|err| {
-                    err.context(ErrorKind::Initialize(
-                        InitializeErrorReason::IdentityService,
-                    ))
-                })?
-                .run_until(shutdown.map_err(|_| ()))
-                .map_err(|err| Error::from(err.context(ErrorKind::IdentityService)));
-            info!("Listening on {} with 1 thread for identity API.", url);
-            Ok(run)
-        })
-        .flatten()
+        identity.then(move |service| -> Result<_, Error> {
+                let service = service.context(ErrorKind::Initialize(
+                    InitializeErrorReason::IdentityService,
+                ))?;
+                let service = LoggingService::new(label, service);
+    
+                let tls_params = TlsAcceptorParams::new(&cert_manager, min_protocol_version);
+    
+                let run = Http::new()
+                    .bind_url(url.clone(), service, Some(tls_params))
+                    .map_err(|err| {
+                        err.context(ErrorKind::Initialize(
+                            InitializeErrorReason::IdentityService,
+                        ))
+                    })?
+                    .run_until(shutdown.map_err(|_| ()))
+                    .map_err(|err| Error::from(err.context(ErrorKind::IdentityService)));
+                info!("Listening on {} with 1 thread for identity API.", url);
+                Ok(run)
+            })
+            .flatten()
+    }
 }
 
 fn start_key_service<M, W, K, CE>(
@@ -2230,6 +2238,7 @@ fn start_key_service<M, W, K, CE>(
     key_store: &K,
     shutdown: Receiver<()>,
     cert_manager: Arc<CertificateManager<CE>>,
+    provisioning_result: &ProvisioningResult,
 ) -> impl Future<Item = (), Error = Error>
 where
     CE: CreateCertificate + Clone,
@@ -2246,7 +2255,7 @@ where
 {
     info!("Starting key service API...");
 
-    let label = "key".to_string();
+    let label = "keys".to_string();
     let url = settings.listen().keyservice_uri().clone();
 
     let min_protocol_version = settings.listen().min_tls_version();
@@ -2271,6 +2280,19 @@ where
         })
         .flatten()
 }
+
+fn should_start_is(provisioning_result: &ProvisioningResult) -> bool 
+{
+    let credentials = provisioning_result.credentials();
+    
+    if let AuthType::SymmetricKey(symmetric_key) = credentials.unwrap().auth_type() {
+        true
+    }
+    else {
+        false
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
