@@ -1511,7 +1511,7 @@ where
             ident_rx,
             id_cert_manager,
         )
-    });
+    }).map_err(|_| Error::from(ErrorKind::ManagementService));
     
     // let key_svc = start_key_service::<M, _, _, _>(
     //     settings,
@@ -1532,7 +1532,7 @@ where
             key_rx,
             cert_manager,
         )
-    });
+    }).map_err(|_| Error::from(ErrorKind::ManagementService));
     
 
     let (runt_tx, runt_rx) = oneshot::channel();
@@ -1619,19 +1619,22 @@ where
     tokio_runtime.spawn(shutdown);
 
     let services = mgmt
-        .join(workload.join3(
+        .join(workload.join5(
             edge_rt_with_cleanup,
             expiration_timer,
-            // _identity_svc,
-            // key_svc,
+            _identity_svc,
+            _key_svc,
         ))
         .then(|result| match result {
-            Ok(((), ((), (restart_code, should_reprovision), ()))) => {
-            // Ok(((), ((), (restart_code, should_reprovision), (), (), ()))) => {
+            // Ok(((), ((), (restart_code, should_reprovision), ()))) => {
+            Ok(((), ((), (restart_code, should_reprovision), (), _, _))) => {
                 Ok((restart_code, should_reprovision))
             }
             Err(err) => Err(err),
         });
+    // let services = _identity_svc.join(_key_svc);
+    // let result = tokio_runtime.block_on(services);
+    // Ok((StartApiReturnStatus::Shutdown, false))
     let (restart_code, should_reprovision) = tokio_runtime.block_on(services)?;
     Ok((restart_code, should_reprovision))
 }
@@ -2260,7 +2263,7 @@ fn start_key_service<M, W, K, CE>(
     key_store: &K,
     shutdown: Receiver<()>,
     cert_manager: Arc<CertificateManager<CE>>,
-) -> impl Future<Item = (), Error = Error>
+) -> impl Future<Item = ()>
 where
     CE: CreateCertificate + Clone,
     K: KeyStore + Clone + Send + Sync + 'static,
