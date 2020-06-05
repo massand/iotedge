@@ -2211,7 +2211,7 @@ fn start_identity<M, W, CE>(
     config: W,
     shutdown: Receiver<()>,
     cert_manager: Arc<CertificateManager<CE>>,
-) -> impl Future<Item = ()>
+) -> impl Future<Item = (), Error = Error>
 // ) -> impl Future<>
 where
     CE: CreateCertificate + Clone,
@@ -2263,7 +2263,7 @@ fn start_key_service<M, W, K, CE>(
     key_store: &K,
     shutdown: Receiver<()>,
     cert_manager: Arc<CertificateManager<CE>>,
-) -> impl Future<Item = ()>
+) -> impl Future<Item = (), Error = Error>
 where
     CE: CreateCertificate + Clone,
     K: KeyStore + Clone + Send + Sync + 'static,
@@ -2305,10 +2305,10 @@ where
         .flatten()
 }
 
-fn start_optional_server<F, A>(config: bool, f: F) -> impl Future<> 
+fn start_optional_server<F, A>(config: bool, f: F) -> impl Future<Item = (), Error = Error> 
 where 
     F: FnOnce() -> A, 
-    A: Future<Item = ()>, 
+    A: Future<Item = (), Error = Error>, 
 {
     if config { 
         Either::A(f())
@@ -2320,7 +2320,7 @@ where
 
 fn should_start_is<S>(settings: &S, provisioning_result: &ProvisioningResult) -> bool
 where
-    S: RuntimeSettings
+    S: RuntimeSettings + 'static
 {
     let result = get_provisioning_auth_method(settings, Some(provisioning_result)).unwrap();
     
