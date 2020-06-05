@@ -1503,7 +1503,7 @@ where
     // );
     let id_workload_config = workload_config.clone();
     let id_cert_manager = cert_manager.clone();
-    let _identity_svc = start_optional_server(should_start_is(&provisioning_result.clone()), || { 
+    let _identity_svc = start_optional_server(should_start_is(settings, &provisioning_result.clone()), || {
         start_identity::<M, _, _>(
             settings,
             runtime,
@@ -1523,7 +1523,7 @@ where
     //     &provisioning_result
     // );
 
-    let _key_svc = start_optional_server(should_start_is(&provisioning_result.clone()), || { 
+    let _key_svc = start_optional_server(should_start_is(settings, &provisioning_result.clone()), || {
         start_key_service::<M, _, _, _>(
             settings,
             runtime,
@@ -2315,11 +2315,13 @@ where
     }
 }
 
-fn should_start_is(provisioning_result: &ProvisioningResult) -> bool 
+fn should_start_is<S>(settings: &S, provisioning_result: &ProvisioningResult) -> bool
+where
+    S: RuntimeSettings
 {
-    let credentials = provisioning_result.credentials();
+    let result = get_provisioning_auth_method(settings, Some(provisioning_result)).unwrap();
     
-    if let AuthType::SymmetricKey(_symmetric_key) = credentials.unwrap().auth_type() {
+    if result == ProvisioningAuthMethod::SharedAccessKey {
         true
     }
     else {
