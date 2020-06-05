@@ -1619,14 +1619,14 @@ where
     tokio_runtime.spawn(shutdown);
 
     let services = mgmt
-        .join(workload.join4(
+        .join(workload.join3(
             edge_rt_with_cleanup,
             expiration_timer,
-            _identity_svc,
+            // _identity_svc,
             // key_svc,
         ))
         .then(|result| match result {
-            Ok(((), ((), (restart_code, should_reprovision), (), ()))) => {
+            Ok(((), ((), (restart_code, should_reprovision), ()))) => {
             // Ok(((), ((), (restart_code, should_reprovision), (), (), ()))) => {
                 Ok((restart_code, should_reprovision))
             }
