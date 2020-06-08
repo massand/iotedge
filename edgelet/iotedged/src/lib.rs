@@ -378,6 +378,7 @@ where
                         make_shutdown_signal(),
                         &crypto,
                         &mut tokio_runtime,
+                        &$provisioning_result,
                     )?;
 
                     if should_reprovision {
@@ -1395,6 +1396,7 @@ fn start_api<HC, K, F, C, W, M>(
     shutdown_signal: F,
     crypto: &C,
     tokio_runtime: &mut tokio::runtime::Runtime,
+    provisioning_result: &ProvisioningResult,
 ) -> Result<(StartApiReturnStatus, bool), Error>
 where
     F: Future<Item = (), Error = ()> + Send + 'static,
@@ -1496,7 +1498,7 @@ where
         workload_config.clone(),
         ident_rx,
         cert_manager.clone(),
-        provisioning_settings,
+        provisioning_result,
     );
 
     let key_svc = start_key_service::<M, _, _, _>(
@@ -2197,7 +2199,7 @@ where
     get_provisioning_auth_method(settings, Some(provisioning_result))
     .and_then(|method| {
         let res = if method != ProvisioningAuthMethod::SharedAccessKey {
-            info!("Starting identity API...");
+            info!("Identity API not started.");
             Either::B(future::ok(()))
         }
         else
