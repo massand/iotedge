@@ -1397,7 +1397,7 @@ fn start_api<HC, K, F, C, W, M>(
     shutdown_signal: F,
     crypto: &C,
     tokio_runtime: &mut tokio::runtime::Runtime,
-    _provisioning_result: ProvisioningResult,
+    provisioning_result: ProvisioningResult,
 ) -> Result<(StartApiReturnStatus, bool), Error>
 where
     F: Future<Item = (), Error = ()> + Send + 'static,
@@ -1493,56 +1493,32 @@ where
         workload_config.clone(),
     );
 
-    let _identity_svc = start_identity::<M, _, _>(
-        settings,
-        runtime,
-        workload_config.clone(),
-        ident_rx,
-        cert_manager.clone(),
-    );
-    // let id_workload_config = workload_config.clone();
-    // let id_cert_manager = cert_manager.clone();
-    // let _identity_svc = start_optional_server(should_start_is(settings, &provisioning_result.clone()), || {
-    //     start_identity::<M, _, _>(
-    //         settings,
-    //         runtime,
-    //         id_workload_config,
-    //         ident_rx,
-    //         id_cert_manager,
-    //     )
-    // }).map_err(|_| Error::from(ErrorKind::ManagementService));
-    
-    // let _key_svc = start_key_service::<M, _, _, _>(
-    //     settings,
-    //     runtime,
-    //     workload_config,
-    //     &key_store.clone(),
-    //     key_rx,
-    //     cert_manager,
-    // );
+    let _identity_svc = if should_start_is(settings, &provisioning_result.clone()) {
+        Either::A(start_identity::<M, _, _>(
+            settings,
+            runtime,
+            workload_config.clone(),
+            ident_rx,
+            cert_manager.clone(),
+        ))
+    }
+    else {
+        Either::B(future::ok(()))
+    };
 
-    
-    let _key_svc = start_optional_server(true, || { 
-        start_key_service::<M, _, _, _>(
-        settings,
-        runtime,
-        workload_config,
-        &key_store.clone(),
-        key_rx,
-        cert_manager,
-    )
-});
-
-    // let _key_svc = start_optional_server(should_start_is(settings, &provisioning_result.clone()), || {
-    //     start_key_service::<M, _, _, _>(
-    //         settings,
-    //         runtime,
-    //         workload_config,
-    //         &key_store.clone(),
-    //         key_rx,
-    //         cert_manager,
-    //     )
-    // }).map_err(|_| Error::from(ErrorKind::ManagementService));
+    let _key_svc = if should_start_is(settings, &provisioning_result.clone()) {
+        Either::A(start_key_service::<M, _, _, _>(
+            settings,
+            runtime,
+            workload_config,
+            &key_store.clone(),
+            key_rx,
+            cert_manager,
+        ))
+    }
+    else {
+        Either::B(future::ok(()))
+    };
     
 
     let (runt_tx, runt_rx) = oneshot::channel();
@@ -2315,32 +2291,19 @@ where
         .flatten()
 }
 
-fn start_optional_server<F, A>(config: bool, f: F) -> impl Future<Item = (), Error = Error> 
-where 
-    F: FnOnce() -> A, 
-    A: Future<Item = (), Error = Error>, 
+fn should_start_is<S>(settings: &S, provisioning_result: &ProvisioningResult) -> bool
+where
+    S: RuntimeSettings + 'static
 {
-    if config { 
-        Either::A(f())
+    let result = get_provisioning_auth_method(settings, Some(provisioning_result)).unwrap();
+    
+    if result == ProvisioningAuthMethod::SharedAccessKey {
+        true
     }
     else {
-        Either::B(future::ok(()))
+        false
     }
 }
-
-// fn should_start_is<S>(settings: &S, provisioning_result: &ProvisioningResult) -> bool
-// where
-//     S: RuntimeSettings + 'static
-// {
-//     let result = get_provisioning_auth_method(settings, Some(provisioning_result)).unwrap();
-    
-//     if result == ProvisioningAuthMethod::SharedAccessKey {
-//         true
-//     }
-//     else {
-//         false
-//     }
-// }
 
 
 #[cfg(test)]
