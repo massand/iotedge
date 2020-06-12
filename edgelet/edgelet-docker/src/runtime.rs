@@ -1074,7 +1074,9 @@ mod tests {
             },
             "listen": {
                 "management_uri": "unix:///var/run/iotedge/mgmt.sock",
-                "workload_uri": "unix:///var/run/iotedge/workload.sock"
+                "workload_uri": "unix:///var/run/iotedge/workload.sock",
+                "identityservice_uri": "unix:///var/run/iotedge/identity.sock",
+                "keyservice_uri": "unix:///var/run/iotedge/key.sock"
             },
             "homedir": "/var/lib/iotedge",
             "moby_runtime": {
