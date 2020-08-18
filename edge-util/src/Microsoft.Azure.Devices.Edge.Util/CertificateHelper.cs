@@ -356,7 +356,7 @@ namespace Microsoft.Azure.Devices.Edge.Util
             var sr = new StringReader(pemCerts.First() + "\r\n" + privateKey);
             var pemReader = new PemReader(sr);
 
-            RsaPrivateCrtKeyParameters keyParams = null;
+            AsymmetricKeyParameter keyParams = null;
             object certObject = pemReader.ReadObject();
             while (certObject != null)
             {
@@ -374,6 +374,10 @@ namespace Microsoft.Azure.Devices.Edge.Util
                 if (certObject is RsaPrivateCrtKeyParameters)
                 {
                     keyParams = (RsaPrivateCrtKeyParameters)certObject;
+                }
+                else if (certObject is ECPrivateKeyParameters)
+                {
+                    keyParams = (ECPrivateKeyParameters)certObject;
                 }
 
                 certObject = pemReader.ReadObject();
