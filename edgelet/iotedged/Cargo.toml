@@ -41,6 +41,7 @@ iothubservice = { path = "../iothubservice" }
 kube-client = { path = "../kube-client", optional = true }
 provisioning = { path = "../provisioning" }
 signal-future = { path = "../signal-future" }
+aziot-key-client = { path = "../../aziot/key/aziot-key-client" }
 
 [target.'cfg(windows)'.dependencies]
 windows-service = "0.1"
