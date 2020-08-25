@@ -17,6 +17,6 @@ pub mod client;
 pub mod error;
 
 
-pub use self::client::{IdentityClient, HttpClient};
+pub use self::client::{IdentityClient};
 pub use self::error::{Error, ErrorKind, RequestType};
 

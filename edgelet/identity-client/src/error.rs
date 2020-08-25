@@ -4,23 +4,16 @@ use std::fmt;
 use std::fmt::Display;
 
 use failure::{Backtrace, Context, Fail};
-use url::Url;
 
 #[derive(Debug)]
 pub struct Error {
     inner: Context<ErrorKind>,
 }
 
-#[derive(Debug, Fail, PartialEq)]
+#[derive(Debug, Fail)]
 pub enum ErrorKind {
-    #[fail(
-        display = "Could not form well-formed URL by joining {:?} with {:?}",
-        _0, _1
-    )]
-    UrlJoin(Url, String),
-
     #[fail(display = "Invalid URI to parse: {:?}", _0)]
-    Uri(Url),
+    Uri(url::ParseError),
 
     #[fail(display = "Invalid HTTP header value {:?}", _0)]
     HeaderValue(String),
@@ -34,9 +27,12 @@ pub enum ErrorKind {
     #[fail(display = "HTTP response error: {}", _0)]
     Response(RequestType),
 
-    #[cfg(test)]
-    #[fail(display = "HTTP test error")]
-    HttpTest,
+    #[fail(display = "HTTP response error: {}", _0)]
+    JsonParse(RequestType),
+
+    // #[cfg(test)]
+    // #[fail(display = "HTTP test error")]
+    // HttpTest,
 }
 
 impl Fail for Error {

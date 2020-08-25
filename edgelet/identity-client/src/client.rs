@@ -23,10 +23,10 @@ pub struct IdentityClient {
 
 impl IdentityClient {
     pub fn new() -> Result<Self, Error> {
-        let url = Url::parse("http://localhost:8901").map_err(|err| Error::from(ErrorKind::Uri()))?;
+        let url = Url::parse("http://localhost:8901").map_err(|err| Error::from(ErrorKind::Uri(err)))?;
         let client = Client::builder()
             .build(UrlConnector::new(
-                &url).context(ErrorKind::InitializeModuleClient)?);
+                &url).context(ErrorKind::Hyper)?);
         Ok(IdentityClient {
             client
         })
@@ -34,17 +34,17 @@ impl IdentityClient {
 
     pub fn get_device(
         &self,
-        api_version: &str,
+        _api_version: &str,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error>>
     {
         let method = hyper::Method::GET;
         
         let uri = format!("/identities/device");
 
-        let mut req = hyper::Request::builder();
-        req.method(method).uri(uri);
+        let mut builder = hyper::Request::builder();
+        builder.method(method).uri(uri);
         
-        let req = req
+        let req = builder
             .body(hyper::Body::empty())
             .expect("could not build hyper::Request");
         
@@ -63,13 +63,14 @@ impl IdentityClient {
                 if status.is_success() {
                     Ok(body)
                 } else {
-                    Err(Error::from((status, &*body)))
+                    Err(Error::from(ErrorKind::Response(RequestType::GetDevice)))
+                    //Err(Error::from((status, &*body)))
                 }
             })
             .and_then(|body| {
                 let parsed: Result<aziot_identity_common::Identity, _> =
                     serde_json::from_slice(&body);
-                parsed.map_err(|e| Error::from(e))
+                parsed.map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::GetDevice))))
             })
         )
     }
