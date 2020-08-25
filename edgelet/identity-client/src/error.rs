@@ -6,8 +6,6 @@ use std::fmt::Display;
 use failure::{Backtrace, Context, Fail};
 use url::Url;
 
-pub type Result<T> = ::std::result::Result<T, Error>;
-
 #[derive(Debug)]
 pub struct Error {
     inner: Context<ErrorKind>,
@@ -83,7 +81,7 @@ impl From<Context<ErrorKind>> for Error {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum RequestType {
-    ConfigMapList,
+    GetDevice,
 }
 
 impl Display for RequestType {

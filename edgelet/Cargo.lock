@@ -59,6 +59,16 @@ version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "aziot-identity-common"
+version = "0.1.0"
+dependencies = [
+ "aziot-key-common 0.1.0",
+ "http-common 0.1.0",
+ "serde 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.27 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "aziot-key-client"
 version = "0.1.0"
 dependencies = [
@@ -1055,6 +1065,8 @@ dependencies = [
 name = "identity-client"
 version = "0.1.0"
 dependencies = [
+ "aziot-identity-common 0.1.0",
+ "edgelet-http 0.1.0",
  "failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.12.35 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1063,6 +1075,7 @@ dependencies = [
  "serde 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.92 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.27 (registry+https://github.com/rust-lang/crates.io-index)",
+ "typed-headers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

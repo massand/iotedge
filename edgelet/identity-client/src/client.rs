@@ -1,107 +1,119 @@
 // Copyright (c) Microsoft. All rights reserved.
 
 use failure::{Fail, ResultExt};
-use futures::future;
+use futures::future::Future;
 use futures::prelude::*;
-use hyper::body::Payload;
-use hyper::client::connect::Connect;
-use hyper::client::{Client as HyperClient, HttpConnector, ResponseFuture};
+use hyper::client::{Client as HyperClient};
 // use hyper::header::HeaderValue;
-use hyper::service::Service;
-use hyper::{Body, Error as HyperError};
-use hyper::{Request, Uri};
-use log::{debug, trace};
+// use hyper::service::Service;
+use hyper::{Body, Client};
+// use hyper::{Body, Error as HyperError};
+// use hyper::{Request, Uri};
+// use log::{debug, trace};
+use typed_headers::{self, http};
+
+use edgelet_http::{UrlConnector};
 
 use crate::error::{Error, ErrorKind, RequestType};
+use url::Url;
 
-pub struct HttpClient<C, B>(pub HyperClient<C, B>);
-
-impl<C, B> Service for HttpClient<C, B>
-where
-    C: Connect + Sync + 'static,
-    B: Payload + Send,
-{
-    type ReqBody = B;
-    type ResBody = Body;
-    type Error = HyperError;
-    type Future = ResponseFuture;
-
-    fn call(&mut self, req: Request<B>) -> Self::Future {
-        self.0.request(req)
-    }
+pub struct IdentityClient {
+    client: HyperClient<UrlConnector, Body>
 }
 
-pub struct Client {
-    client: HttpClient<HttpConnector, Body>
-}
-
-impl Client {
-    pub fn new() -> Self {
-        let mut connector = HttpConnector::new(4);
-
-        Client {
-            client: HttpClient(HyperClient::builder().build::<_, Body>(connector)),
-        }
+impl IdentityClient {
+    pub fn new() -> Result<Self, Error> {
+        let url = Url::parse("http://localhost:8901").map_err(|err| Error::from(ErrorKind::Uri()))?;
+        let client = Client::builder()
+            .build(UrlConnector::new(
+                &url).context(ErrorKind::InitializeModuleClient)?);
+        Ok(IdentityClient {
+            client
+        })
     }
 
-    fn execute(
-        &mut self,
-        req: hyper::Request<Vec<u8>>,
-    ) -> impl Future<Item = hyper::Response<Body>, Error = Error> {
-        let path = req
-            .uri()
-            .path_and_query()
-            .map_or("", |p| p.as_str())
-            .to_string();
-        debug!("HTTP request path: {}", path);
-        self.config
-            .host()
-            .join(&path)
-            .and_then(|base_url| {
-                base_url.join(req.uri().path_and_query().map_or("", |pq| pq.as_str()))
+    pub fn get_device(
+        &self,
+        api_version: &str,
+    ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error>>
+    {
+        let method = hyper::Method::GET;
+        
+        let uri = format!("/identities/device");
+
+        let mut req = hyper::Request::builder();
+        req.method(method).uri(uri);
+        
+        let req = req
+            .body(hyper::Body::empty())
+            .expect("could not build hyper::Request");
+        
+        Box::new(
+            self
+            .client
+            .request(req)
+            .map_err(|e| Error::from(e.context(ErrorKind::Request(RequestType::GetDevice))))
+            .and_then(|resp| {
+                let (http::response::Parts { status, .. }, body) = resp.into_parts();
+                body.concat2()
+                    .and_then(move |body| Ok((status, body)))
+                    .map_err(|e| Error::from(e.context(ErrorKind::Response(RequestType::GetDevice))))
             })
-            .map_err(|err| {
-                Error::from(err.context(ErrorKind::UrlJoin(self.config.host().clone(), path)))
-            })
-            .and_then(|url| {
-                // req is an http 0.2 Request but hyper uses http 0.1, so destructure req and reassemble it.
-
-                let (req_parts, body) = req.into_parts();
-
-                let mut builder = hyper::Request::builder();
-
-                builder.uri(url.as_str().parse::<Uri>().context(ErrorKind::Uri(url))?);
-
-                builder.method(match req_parts.method {
-                    hyper::Method::DELETE => hyper::Method::DELETE,
-                    hyper::Method::GET => hyper::Method::GET,
-                    hyper::Method::PATCH => hyper::Method::PATCH,
-                    hyper::Method::POST => hyper::Method::POST,
-                    hyper::Method::PUT => hyper::Method::PUT,
-                    method => {
-                        let err = failure::format_err!("unrecognized http method {}", method);
-                        return Err(err.context(ErrorKind::Hyper).into());
-                    }
-                });
-
-                for (name, value) in req_parts.headers {
-                    if let Some(name) = name {
-                        builder.header(name.as_str(), value.as_bytes());
-                    }
+            .and_then(|(status, body)| {
+                if status.is_success() {
+                    Ok(body)
+                } else {
+                    Err(Error::from((status, &*body)))
                 }
-
-                let req = builder
-                    .body(body.into())
-                    .map_err(|err| Error::from(err.context(ErrorKind::Hyper)))?;
-
-                let res = self
-                    .client
-                    .call(req)
-                    .map_err(|err| Error::from(err.context(ErrorKind::Hyper)))
-                    .map(|res| res.map(From::from));
-                Ok(res)
             })
-            .into_future()
-            .flatten()
+            .and_then(|body| {
+                let parsed: Result<aziot_identity_common::Identity, _> =
+                    serde_json::from_slice(&body);
+                parsed.map_err(|e| Error::from(e))
+            })
+        )
     }
+    
+    // fn reprovision_device(
+    //     &self,
+    //     api_version: &str,
+    // ) -> Box<dyn Future<Item = (), Error = Error<serde_json::Value>>> 
+    // {
+    //     Box::new()
+    // }
+
+    // fn create_module(
+    //     &self,
+    //     api_version: &str,
+    //     module: crate::models::IdentitySpec,
+    // ) -> Box<dyn Future<Item = crate::models::IdentityResult, Error = Error<serde_json::Value>>>
+    // {
+    //     Box::new()
+    // }
+
+    // fn delete_module(
+    //     &self,
+    //     api_version: &str,
+    //     module_name: &str,
+    // ) -> Box<dyn Future<Item = (), Error = Error<serde_json::Value>>> 
+    // {
+    //     Box::new()
+    // }
+
+    // fn get_module(
+    //     &self,
+    //     api_version: &str,
+    //     module_name: &str,
+    // ) -> Box<dyn Future<Item = crate::models::IdentityResult, Error = Error<serde_json::Value>>>
+    // {
+    //     Box::new()
+    // }
+
+    // fn get_modules(
+    //     &self,
+    //     api_version: &str,
+    // ) -> Box<dyn Future<Item = crate::models::IdentityList, Error = Error<serde_json::Value>>> 
+    // {
+    //     Box::new()
+    // }
 }
