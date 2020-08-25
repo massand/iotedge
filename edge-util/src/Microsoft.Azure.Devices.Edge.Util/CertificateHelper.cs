@@ -366,14 +366,18 @@ namespace Microsoft.Azure.Devices.Edge.Util
                 }
 
                 // when processing certificates generated via openssl certObject type is of AsymmetricCipherKeyPair
-                if (certObject is AsymmetricCipherKeyPair)
+                if (certObject is AsymmetricCipherKeyPair keyPair)
                 {
-                    certObject = ((AsymmetricCipherKeyPair)certObject).Private;
+                    certObject = keyPair.Private;
                 }
 
-                if (certObject is RsaPrivateCrtKeyParameters)
+                if (certObject is RsaPrivateCrtKeyParameters rsaParameters)
                 {
-                    keyParams = (RsaPrivateCrtKeyParameters)certObject;
+                    keyParams = rsaParameters;
+                }
+                else if (certObject is ECPrivateKeyParameters ecParameters)
+                {
+                    keyParams = ecParameters;
                 }
                 else if (certObject is ECPrivateKeyParameters)
                 {
