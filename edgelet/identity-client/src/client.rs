@@ -35,7 +35,7 @@ impl IdentityClient {
     pub fn get_device(
         &self,
         _api_version: &str,
-    ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error>>
+    ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
         let method = hyper::Method::GET;
         

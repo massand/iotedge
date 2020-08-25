@@ -10,7 +10,11 @@
     clippy::shadow_unrelated,
     clippy::too_many_lines,
     clippy::type_complexity,
-    clippy::use_self
+    clippy::use_self,
+    dead_code,
+    unused_imports,
+    unused_macros,
+    unused_variables,
 )]
 
 pub mod app;
@@ -425,15 +429,22 @@ where
         info!("Obtaining edge device provisioning data...");
         
         //TODO: Invoke Identity Service client
-        
-        start_edgelet!(
-            key_store,
-            provisioning_result,
-            root_key,
-            force_module_reprovision,
-            None,
-            manual,
-        );
+        let client = identity_client::IdentityClient::new().map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
+        let _device = client.get_device("api_version");
+        // start_edgelet!(
+        //     key_store,
+        //     provisioning_result,
+        //     root_key,
+        //     force_module_reprovision,
+        //     None,
+        //     manual,
+        // );
+
+        tokio_runtime
+            .block_on(_device)
+            .context(ErrorKind::Initialize(
+                InitializeErrorReason::DpsProvisioningClient,
+            ))?;
 
         info!("Shutdown complete.");
         Ok(())

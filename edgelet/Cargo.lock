@@ -1186,6 +1186,7 @@ dependencies = [
  "hsm 0.1.0",
  "hyper 0.12.35 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper-tls 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "identity-client 0.1.0",
  "iothubservice 0.1.0",
  "kube-client 0.1.0",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
