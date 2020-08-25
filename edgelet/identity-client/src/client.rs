@@ -37,15 +37,16 @@ impl IdentityClient {
         _api_version: &str,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
-        let method = hyper::Method::GET;
+        let method = hyper::Method::POST;
         
-        let uri = format!("/identities/device");
+        let uri = format!("http://localhost:8901/identities/device");
 
         let mut builder = hyper::Request::builder();
         builder.method(method).uri(uri);
         
+        let body = serde_json::json! {{ "type": "aziot" }};
         let req = builder
-            .body(hyper::Body::empty())
+            .body(hyper::Body::from(body.to_string()))
             .expect("could not build hyper::Request");
         
         Box::new(
