@@ -18,17 +18,21 @@ use crate::error::{Error, ErrorKind, RequestType};
 use url::Url;
 
 pub struct IdentityClient {
-    client: HyperClient<UrlConnector, Body>
+    client: HyperClient<UrlConnector, Body>,
+    host: Url,
 }
 
 impl IdentityClient {
     pub fn new() -> Result<Self, Error> {
+        //TODO: Read IS endpoint configuration
+        
         let url = Url::parse("http://localhost:8901").map_err(|err| Error::from(ErrorKind::Uri(err)))?;
         let client = Client::builder()
             .build(UrlConnector::new(
                 &url).context(ErrorKind::Hyper)?);
         Ok(IdentityClient {
-            client
+            client,
+            host: url,
         })
     }
 
@@ -39,7 +43,7 @@ impl IdentityClient {
     {
         let method = hyper::Method::POST;
         
-        let uri = format!("http://localhost:8901/identities/device");
+        let uri = format!("{}identities/device", self.host.as_str());
 
         let mut builder = hyper::Request::builder();
         builder.method(method).uri(uri);

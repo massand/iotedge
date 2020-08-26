@@ -430,7 +430,11 @@ where
         
         //TODO: Invoke Identity Service client
         let client = identity_client::IdentityClient::new().map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
-        let _device = client.get_device("api_version");
+        let _device = client.get_device("api_version")
+        .and_then(move |identity| {
+            debug!("{:?}", identity);
+            Ok(())
+        });
         // start_edgelet!(
         //     key_store,
         //     provisioning_result,
