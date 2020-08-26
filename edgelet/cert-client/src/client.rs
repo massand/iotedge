@@ -12,32 +12,48 @@ use edgelet_http::{UrlConnector};
 use crate::error::{Error, ErrorKind, RequestType};
 use url::Url;
 
-pub struct IdentityClient {
+/// Ref <https://url.spec.whatwg.org/#path-percent-encode-set>
+pub const PATH_SEGMENT_ENCODE_SET: &percent_encoding::AsciiSet =
+	&percent_encoding::CONTROLS
+	.add(b' ').add(b'"').add(b'<').add(b'>').add(b'`') // fragment percent-encode set
+	.add(b'#').add(b'?').add(b'{').add(b'}'); // path percent-encode set
+
+
+pub struct CertificateClient {
     client: HyperClient<UrlConnector, Body>,
     host: Url,
 }
 
-impl IdentityClient {
+impl CertificateClient {
     pub fn new() -> Result<Self, Error> {
         //TODO: Read IS endpoint configuration
         
-        let url = Url::parse("http://localhost:8901").map_err(|err| Error::from(ErrorKind::Uri(err)))?;
+        let url = Url::parse("http://localhost:8888").map_err(|err| Error::from(ErrorKind::Uri(err)))?;
         let client = Client::builder()
             .build(UrlConnector::new(
                 &url).context(ErrorKind::Hyper)?);
-        Ok(IdentityClient {
+        Ok(CertificateClient {
             client,
             host: url,
         })
     }
 
-    pub fn get_device(
+    pub fn create_cert(
         &self,
-        _api_version: &str,
-    ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
+        id: &str,
+		csr: &[u8],
+		issuer: Option<(&str, &aziot_key_common::KeyHandle)>,
+    ) -> Box<dyn Future<Item = Vec<u8>, Error = Error> + Send>
     {
-        let uri = format!("{}identities/device", self.host.as_str());
-        let body = serde_json::json! {{ "type": "aziot" }};
+        let uri = format!("{}certificates", self.host.as_str());
+        let body = aziot_cert_common_http::create_cert::Request {
+			cert_id: id.to_owned(),
+			csr: aziot_cert_common_http::Pem(csr.to_owned()),
+			issuer: issuer.map(|(cert_id, private_key_handle)| aziot_cert_common_http::create_cert::Issuer {
+				cert_id: cert_id.to_owned(),
+				private_key_handle: private_key_handle.clone(),
+			}),
+		};
 
         request(
             &self.client,
@@ -47,86 +63,54 @@ impl IdentityClient {
         )
     }
     
-    pub fn reprovision_device(
-        &self,
-        _api_version: &str,
+    pub fn import_cert(
+		&self,
+		id: &str,
+		pem: &[u8],
+	) -> Box<dyn Future<Item = (), Error = Error> + Send> 
+    {
+        let uri = format!("{}certificates/{}", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET));
+        let body = aziot_cert_common_http::import_cert::Request {
+			pem: aziot_cert_common_http::Pem(pem.to_owned()),
+		};
+
+        request(
+            &self.client,
+            hyper::Method::POST,
+            &uri,
+            Some(&body),
+        )
+    }
+
+    pub fn get_cert(
+		&self,
+		id: &str,
+    ) ->  Box<dyn Future<Item = Vec<u8>, Error = Error> + Send>
+    {
+		let uri = format!("{}certificates/{}", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET));
+
+		request::<_, (), _>(
+			&self.client,
+			http::Method::GET,
+			&uri,
+			None,
+		)
+	}
+
+	pub fn delete_cert(
+		&self,
+		id: &str,
     ) -> Box<dyn Future<Item = (), Error = Error> + Send> 
     {
-        let uri = format!("{}identities/device/reprovision", self.host.as_str());
-        let body = serde_json::json! {{ "type": "aziot" }};
+		let uri = format!("{}certificates/{}", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET));
 
-        request(
-            &self.client,
-            hyper::Method::POST,
-            &uri,
-            Some(&body),
-        )
-    }
-
-    pub fn create_module(
-        &self,
-        _api_version: &str,
-        module_name: &str,
-    ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
-    {
-        let uri = format!("{}identities/modules", self.host.as_str());
-        let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
-
-        request(
-            &self.client,
-            hyper::Method::POST,
-            &uri,
-            Some(&body),
-        )
-    }
-
-    pub fn delete_module(
-        &self,
-        _api_version: &str,
-        module_name: &str,
-    ) -> Box<dyn Future<Item = (), Error = Error> + Send> 
-    {       
-        let uri = format!("{}identities/modules/{}", self.host.as_str(), module_name);
-
-        request::<_, (), _>(
-            &self.client,
-            hyper::Method::DELETE,
-            &uri,
-            None,
-        )
-    }
-
-    pub fn get_module(
-        &self,
-        _api_version: &str,
-        module_name: &str,
-    ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
-    {
-        let uri = format!("{}identities/modules/{}", self.host.as_str(), module_name);
-        let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
-
-        request(
-            &self.client,
-            hyper::Method::GET,
-            &uri,
-            Some(&body),
-        )
-    }
-
-    pub fn get_modules(
-        &self,
-        _api_version: &str,
-    ) -> Box<dyn Future<Item = Vec<aziot_identity_common::Identity>, Error = Error> + Send> 
-    {
-        let uri = format!("{}identities/modules", self.host.as_str());
-
-        request::<_, (), _>(
-            &self.client,
-            hyper::Method::POST,
-            &uri,
-            None,
-        )
-    }
+		request::<_, (), _>(
+			&self.client,
+			http::Method::DELETE,
+			&uri,
+			None,
+		)
+	}
 }
 
 fn request<TConnect, TRequest, TResponse>(

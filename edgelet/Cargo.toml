@@ -2,6 +2,7 @@
 members = [
     "docker-rs",
     "dps",
+    "cert-client",
     "edgelet-core",
     "edgelet-docker",
     "edgelet-hsm",
