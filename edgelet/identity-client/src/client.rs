@@ -41,42 +41,14 @@ impl IdentityClient {
         _api_version: &str,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
-        let method = hyper::Method::POST;
-        
         let uri = format!("{}identities/device", self.host.as_str());
-
-        let mut builder = hyper::Request::builder();
-        builder.method(method).uri(uri);
-        
         let body = serde_json::json! {{ "type": "aziot" }};
-        let req = builder
-            .body(hyper::Body::from(body.to_string()))
-            .expect("could not build hyper::Request");
-        
-        Box::new(
-            self
-            .client
-            .request(req)
-            .map_err(|e| Error::from(e.context(ErrorKind::Request(RequestType::GetDevice))))
-            .and_then(|resp| {
-                let (http::response::Parts { status, .. }, body) = resp.into_parts();
-                body.concat2()
-                    .and_then(move |body| Ok((status, body)))
-                    .map_err(|e| Error::from(e.context(ErrorKind::Response(RequestType::GetDevice))))
-            })
-            .and_then(|(status, body)| {
-                if status.is_success() {
-                    Ok(body)
-                } else {
-                    Err(Error::from(ErrorKind::Response(RequestType::GetDevice)))
-                    //Err(Error::from((status, &*body)))
-                }
-            })
-            .and_then(|body| {
-                let parsed: Result<aziot_identity_common::Identity, _> =
-                    serde_json::from_slice(&body);
-                parsed.map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::GetDevice))))
-            })
+
+        request(
+            &self.client,
+            hyper::Method::POST,
+            &uri,
+            Some(&body),
         )
     }
     
@@ -85,37 +57,14 @@ impl IdentityClient {
         _api_version: &str,
     ) -> Box<dyn Future<Item = (), Error = Error> + Send> 
     {
-        let method = hyper::Method::POST;
-        
         let uri = format!("{}identities/device/reprovision", self.host.as_str());
-
-        let mut builder = hyper::Request::builder();
-        builder.method(method).uri(uri);
-        
         let body = serde_json::json! {{ "type": "aziot" }};
-        let req = builder
-            .body(hyper::Body::from(body.to_string()))
-            .expect("could not build hyper::Request");
-        
-        Box::new(
-            self
-            .client
-            .request(req)
-            .map_err(|e| Error::from(e.context(ErrorKind::Request(RequestType::ReprovisionDevice))))
-            .and_then(|resp| {
-                let (http::response::Parts { status, .. }, body) = resp.into_parts();
-                body.concat2()
-                    .and_then(move |body| Ok((status, body)))
-                    .map_err(|e| Error::from(e.context(ErrorKind::Response(RequestType::ReprovisionDevice))))
-            })
-            .and_then(|(status, _)| {
-                if !status.is_success() {
-                    Ok(())
-                } else {
-                    Err(Error::from(ErrorKind::Response(RequestType::ReprovisionDevice)))
-                    //Err(Error::from((status, &*body)))
-                }
-            })
+
+        request(
+            &self.client,
+            hyper::Method::POST,
+            &uri,
+            Some(&body),
         )
     }
 
@@ -125,42 +74,14 @@ impl IdentityClient {
         module_name: &str,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
-        let method = hyper::Method::POST;
-        
         let uri = format!("{}identities/modules", self.host.as_str());
-
-        let mut builder = hyper::Request::builder();
-        builder.method(method).uri(uri);
-        
         let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
-        let req = builder
-            .body(hyper::Body::from(body.to_string()))
-            .expect("could not build hyper::Request");
-        
-        Box::new(
-            self
-            .client
-            .request(req)
-            .map_err(|e| Error::from(e.context(ErrorKind::Request(RequestType::CreateModule))))
-            .and_then(|resp| {
-                let (http::response::Parts { status, .. }, body) = resp.into_parts();
-                body.concat2()
-                    .and_then(move |body| Ok((status, body)))
-                    .map_err(|e| Error::from(e.context(ErrorKind::Response(RequestType::CreateModule))))
-            })
-            .and_then(|(status, body)| {
-                if status.is_success() {
-                    Ok(body)
-                } else {
-                    Err(Error::from(ErrorKind::Response(RequestType::CreateModule)))
-                    //Err(Error::from((status, &*body)))
-                }
-            })
-            .and_then(|body| {
-                let parsed: Result<aziot_identity_common::Identity, _> =
-                    serde_json::from_slice(&body);
-                parsed.map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::CreateModule))))
-            })
+
+        request(
+            &self.client,
+            hyper::Method::POST,
+            &uri,
+            Some(&body),
         )
     }
 
@@ -169,38 +90,14 @@ impl IdentityClient {
         _api_version: &str,
         module_name: &str,
     ) -> Box<dyn Future<Item = (), Error = Error> + Send> 
-    {
-        let method = hyper::Method::POST;
-        
-        let uri = format!("{}identities/modules", self.host.as_str());
+    {       
+        let uri = format!("{}identities/modules/{}", self.host.as_str(), module_name);
 
-        let mut builder = hyper::Request::builder();
-        builder.method(method).uri(uri);
-        
-        let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
-        let req = builder
-            .body(hyper::Body::from(body.to_string()))
-            .expect("could not build hyper::Request");
-        
-        Box::new(
-            self
-            .client
-            .request(req)
-            .map_err(|e| Error::from(e.context(ErrorKind::Request(RequestType::DeleteModule))))
-            .and_then(|resp| {
-                let (http::response::Parts { status, .. }, body) = resp.into_parts();
-                body.concat2()
-                    .and_then(move |body| Ok((status, body)))
-                    .map_err(|e| Error::from(e.context(ErrorKind::Response(RequestType::DeleteModule))))
-            })
-            .and_then(|(status, _)| {
-                if !status.is_success() {
-                    Ok(())
-                } else {
-                    Err(Error::from(ErrorKind::Response(RequestType::DeleteModule)))
-                    //Err(Error::from((status, &*body)))
-                }
-            })
+        request::<_, (), _>(
+            &self.client,
+            hyper::Method::DELETE,
+            &uri,
+            None,
         )
     }
 
@@ -210,42 +107,14 @@ impl IdentityClient {
         module_name: &str,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
-        let method = hyper::Method::GET;
-        
         let uri = format!("{}identities/modules/{}", self.host.as_str(), module_name);
-
-        let mut builder = hyper::Request::builder();
-        builder.method(method).uri(uri);
-        
         let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
-        let req = builder
-            .body(hyper::Body::from(body.to_string()))
-            .expect("could not build hyper::Request");
-        
-        Box::new(
-            self
-            .client
-            .request(req)
-            .map_err(|e| Error::from(e.context(ErrorKind::Request(RequestType::GetModule))))
-            .and_then(|resp| {
-                let (http::response::Parts { status, .. }, body) = resp.into_parts();
-                body.concat2()
-                    .and_then(move |body| Ok((status, body)))
-                    .map_err(|e| Error::from(e.context(ErrorKind::Response(RequestType::GetModule))))
-            })
-            .and_then(|(status, body)| {
-                if status.is_success() {
-                    Ok(body)
-                } else {
-                    Err(Error::from(ErrorKind::Response(RequestType::GetModule)))
-                    //Err(Error::from((status, &*body)))
-                }
-            })
-            .and_then(|body| {
-                let parsed: Result<aziot_identity_common::Identity, _> =
-                    serde_json::from_slice(&body);
-                parsed.map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::GetModule))))
-            })
+
+        request(
+            &self.client,
+            hyper::Method::GET,
+            &uri,
+            Some(&body),
         )
     }
 
@@ -254,41 +123,66 @@ impl IdentityClient {
         _api_version: &str,
     ) -> Box<dyn Future<Item = Vec<aziot_identity_common::Identity>, Error = Error> + Send> 
     {
-        let method = hyper::Method::POST;
-        
         let uri = format!("{}identities/modules", self.host.as_str());
 
-        let mut builder = hyper::Request::builder();
-        builder.method(method).uri(uri);
-        
-        let req = builder
-            .body(hyper::Body::empty())
-            .expect("could not build hyper::Request");
-        
-        Box::new(
-            self
-            .client
-            .request(req)
-            .map_err(|e| Error::from(e.context(ErrorKind::Request(RequestType::ListModules))))
-            .and_then(|resp| {
-                let (http::response::Parts { status, .. }, body) = resp.into_parts();
-                body.concat2()
-                    .and_then(move |body| Ok((status, body)))
-                    .map_err(|e| Error::from(e.context(ErrorKind::Response(RequestType::ListModules))))
-            })
-            .and_then(|(status, body)| {
-                if status.is_success() {
-                    Ok(body)
-                } else {
-                    Err(Error::from(ErrorKind::Response(RequestType::ListModules)))
-                    //Err(Error::from((status, &*body)))
-                }
-            })
-            .and_then(|body| {
-                let parsed: Result<Vec<aziot_identity_common::Identity>, _> =
-                    serde_json::from_slice(&body);
-                parsed.map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::ListModules))))
-            })
+        request::<_, (), _>(
+            &self.client,
+            hyper::Method::POST,
+            &uri,
+            None,
         )
     }
+}
+
+fn request<TConnect, TRequest, TResponse>(
+    client: &hyper::Client<TConnect, hyper::Body>,
+    method: http::Method,
+    uri: &str,
+    body: Option<&TRequest>,
+) -> Box<dyn Future<Item = TResponse, Error = Error> + Send>
+where
+    TConnect: hyper::client::connect::Connect + Clone + Send + Sync + 'static,
+    TRequest: serde::Serialize,
+    TResponse: serde::de::DeserializeOwned + Send + 'static,
+{
+    let mut builder = hyper::Request::builder();
+    builder.method(method).uri(uri);
+    
+    let builder =
+    if let Some(body) = body {
+        let body = serde_json::to_vec(body).expect("serializing request body to JSON cannot fail").into();
+        builder
+            .header(hyper::header::CONTENT_TYPE, "application/json")
+            .body(body)
+    }
+    else {
+        builder.body(Default::default())
+    };
+    
+    let req = builder.expect("cannot fail to create hyper request");
+    
+    Box::new(
+        client
+        .request(req)
+        .map_err(|e| Error::from(e.context(ErrorKind::Request)))
+        .and_then(|resp| {
+            let (http::response::Parts { status, .. }, body) = resp.into_parts();
+            body.concat2()
+                .and_then(move |body| Ok((status, body)))
+                .map_err(|e| Error::from(e.context(ErrorKind::Hyper)))
+        })
+        .and_then(|(status, body)| {
+            if status.is_success() {
+                Ok(body)
+            } else {
+                Err(Error::http_with_error_response(status, &*body))
+                //Err(Error::from((status, &*body)))
+            }
+        })
+        .and_then(|body| {
+            let parsed: Result<TResponse, _> =
+                serde_json::from_slice(&body);
+            parsed.map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::ListModules))))
+        })
+    )
 }

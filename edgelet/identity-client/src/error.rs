@@ -2,8 +2,10 @@
 
 use std::fmt;
 use std::fmt::Display;
+use std::str;
 
 use failure::{Backtrace, Context, Fail};
+use hyper::StatusCode;
 
 #[derive(Debug)]
 pub struct Error {
@@ -21,11 +23,11 @@ pub enum ErrorKind {
     #[fail(display = "Hyper HTTP error")]
     Hyper,
 
-    #[fail(display = "HTTP request error: {}", _0)]
-    Request(RequestType),
-
-    #[fail(display = "HTTP response error: {}", _0)]
-    Response(RequestType),
+    #[fail(display = "HTTP request error")]
+    Request,
+    
+    #[fail(display = "HTTP response error: [{}] {}", _0, _1)]
+    Response(StatusCode, String),
 
     #[fail(display = "HTTP response error: {}", _0)]
     JsonParse(RequestType),
@@ -58,6 +60,18 @@ impl Error {
 
     pub fn kind(&self) -> &ErrorKind {
         self.inner.get_context()
+    }
+
+    pub fn http_with_error_response(status_code: StatusCode, body: &[u8]) -> Self {
+        let kind = match str::from_utf8(body) {
+            Ok(body) => ErrorKind::Response(status_code, body.to_string()),
+            Err(_) => ErrorKind::Response(
+                status_code,
+                "<could not parse response body as utf-8>".to_string(),
+            ),
+        };
+
+        kind.into()
     }
 }
 
