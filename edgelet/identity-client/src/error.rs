@@ -78,6 +78,11 @@ impl From<Context<ErrorKind>> for Error {
 #[derive(Clone, Debug, PartialEq)]
 pub enum RequestType {
     GetDevice,
+    ReprovisionDevice,
+    CreateModule,
+    DeleteModule,
+    GetModule,
+    ListModules,
 }
 
 impl Display for RequestType {
