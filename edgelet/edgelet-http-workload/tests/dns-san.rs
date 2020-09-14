@@ -170,7 +170,6 @@ fn create_workload_service(module_id: &str) -> (WorkloadService, Crypto) {
     let runtime = TestRuntime::<Error, _>::make_runtime(
         TestSettings::new(),
         TestProvisioningResult::new(),
-        TestHsm::default(),
     )
     .wait()
     .unwrap()

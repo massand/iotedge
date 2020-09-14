@@ -17,7 +17,6 @@ use std::fmt;
 use std::fmt::{Debug, Formatter};
 #[cfg(target_os = "linux")]
 use std::net;
-use std::net::ToSocketAddrs;
 #[cfg(target_os = "linux")]
 use std::os::unix::io::FromRawFd;
 #[cfg(windows)]
@@ -313,9 +312,12 @@ impl HyperExt for Http {
         let incoming = match url.scheme() {
             HTTP_SCHEME | TCP_SCHEME => {
                 let addr = url
-                    .to_socket_addrs()
-                    .context(ErrorKind::InvalidUrl(url.to_string()))?
-                    .next()
+                    .socket_addrs(|| None)
+                    .context(ErrorKind::InvalidUrl(url.to_string()))?;
+                let addr = addr
+                    .iter()
+                    .next();
+                let addr = addr
                     .ok_or_else(|| {
                         ErrorKind::InvalidUrlWithReason(
                             url.to_string(),
@@ -324,15 +326,18 @@ impl HyperExt for Http {
                     })?;
 
                 let listener = TcpListener::bind(&addr)
-                    .with_context(|_| ErrorKind::BindListener(BindListenerType::Address(addr)))?;
+                    .with_context(|_| ErrorKind::BindListener(BindListenerType::Address(*addr)))?;
                 Incoming::Tcp(listener)
             }
             #[cfg(unix)]
             HTTPS_SCHEME => {
                 let addr = url
-                    .to_socket_addrs()
-                    .context(ErrorKind::InvalidUrl(url.to_string()))?
-                    .next()
+                    .socket_addrs(|| None)
+                    .context(ErrorKind::InvalidUrl(url.to_string()))?;
+                let addr = addr
+                    .iter()
+                    .next();
+                let addr = addr
                     .ok_or_else(|| {
                         ErrorKind::InvalidUrlWithReason(
                             url.to_string(),
@@ -366,7 +371,7 @@ impl HyperExt for Http {
                 let tls_acceptor = tokio_tls::TlsAcceptor::from(tls_acceptor);
 
                 let listener = TcpListener::bind(&addr)
-                    .with_context(|_| ErrorKind::BindListener(BindListenerType::Address(addr)))?;
+                    .with_context(|_| ErrorKind::BindListener(BindListenerType::Address(*addr)))?;
                 Incoming::Tls(listener, tls_acceptor, Mutex::new(vec![]))
             }
             UNIX_SCHEME => {

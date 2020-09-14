@@ -5,10 +5,10 @@ use std::path::Path;
 use std::time::Duration;
 
 use edgelet_core::{
-    AuthId, Authenticator, Certificates, Connect, DiskInfo, GetTrustBundle, Listen, LogOptions,
+    AuthId, Authenticator, Certificates, Connect, DiskInfo, Listen, LogOptions,
     MakeModuleRuntime, Module, ModuleRegistry, ModuleRuntime, ModuleRuntimeState, ModuleSpec,
     Provisioning, ProvisioningResult, RuntimeSettings, SystemInfo, SystemResources,
-    WatchdogSettings,
+    WatchdogSettings, Endpoints,
 };
 use failure::Fail;
 use futures::future::{self, FutureResult};
@@ -120,6 +120,10 @@ impl RuntimeSettings for TestSettings {
     }
 
     fn watchdog(&self) -> &WatchdogSettings {
+        unimplemented!()
+    }
+
+    fn endpoints(&self) -> &Endpoints {
         unimplemented!()
     }
 }
@@ -312,7 +316,6 @@ where
     fn make_runtime(
         settings: Self::Settings,
         _: Self::ProvisioningResult,
-        _: impl GetTrustBundle,
     ) -> Self::Future {
         future::ok(TestRuntime {
             module: None,

@@ -7,7 +7,7 @@ use config::{Config, Environment};
 use docker::models::{ContainerCreateBodyNetworkingConfig, EndpointSettings, HostConfig};
 use edgelet_core::{
     Certificates, Connect, Listen, MobyNetwork, ModuleSpec, Provisioning, RuntimeSettings,
-    Settings as BaseSettings, UrlExt, WatchdogSettings,
+    Settings as BaseSettings, UrlExt, WatchdogSettings, Endpoints,
 };
 use edgelet_utils::YamlFileSource;
 use failure::{Context, Fail, ResultExt};
@@ -30,7 +30,6 @@ const UNIX_SCHEME: &str = "unix";
 
 #[derive(Clone, Debug, serde_derive::Deserialize, serde_derive::Serialize)]
 pub struct MobyRuntime {
-    #[serde(with = "url_serde")]
     uri: Url,
     network: MobyNetwork,
 }
@@ -118,6 +117,10 @@ impl RuntimeSettings for Settings {
     fn watchdog(&self) -> &WatchdogSettings {
         self.base.watchdog()
     }
+
+    fn endpoints(&self) -> &Endpoints {
+        self.base.endpoints()
+    }
 }
 
 fn init_agent_spec(settings: &mut Settings) -> Result<(), LoadSettingsError> {
@@ -152,12 +155,6 @@ fn agent_vol_mount(settings: &mut Settings) -> Result<(), LoadSettingsError> {
             let path = uri
                 .to_uds_file_path()
                 .context(ErrorKind::InvalidSocketUri(uri.to_string()))?;
-            // On Windows we mount the parent folder because we can't mount the
-            // socket files directly
-            #[cfg(windows)]
-            let path = path
-                .parent()
-                .ok_or_else(|| ErrorKind::InvalidSocketUri(uri.to_string()))?;
             let path = path
                 .to_str()
                 .ok_or_else(|| ErrorKind::InvalidSocketUri(uri.to_string()))?

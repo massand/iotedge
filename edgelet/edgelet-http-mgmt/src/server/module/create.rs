@@ -124,7 +124,6 @@ mod tests {
 
     use edgelet_core::{MakeModuleRuntime, ModuleRuntimeState, ModuleStatus};
     use edgelet_http::route::Parameters;
-    use edgelet_test_utils::crypto::TestHsm;
     use edgelet_test_utils::module::{
         TestConfig, TestModule, TestProvisioningResult, TestRuntime, TestSettings,
     };
@@ -149,7 +148,6 @@ mod tests {
             TestRuntime::make_runtime(
                 TestSettings::new(),
                 TestProvisioningResult::new(),
-                TestHsm::default(),
             )
             .wait()
             .unwrap()
@@ -229,7 +227,6 @@ mod tests {
         let runtime = TestRuntime::make_runtime(
             TestSettings::new(),
             TestProvisioningResult::new(),
-            TestHsm::default(),
         )
         .wait()
         .unwrap()
@@ -266,7 +263,6 @@ mod tests {
         let runtime = TestRuntime::make_runtime(
             TestSettings::new(),
             TestProvisioningResult::new(),
-            TestHsm::default(),
         )
         .wait()
         .unwrap()

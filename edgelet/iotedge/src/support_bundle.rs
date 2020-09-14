@@ -805,7 +805,6 @@ mod tests {
         TestRuntime::make_runtime(
             TestSettings::new(),
             TestProvisioningResult::new(),
-            TestHsm::default(),
         )
         .wait()
         .unwrap()

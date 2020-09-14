@@ -12,6 +12,7 @@ use edgelet_http::{UrlConnector};
 use crate::error::{Error, ErrorKind, RequestType};
 use url::Url;
 
+#[derive(Clone)]
 pub struct IdentityClient {
     client: HyperClient<UrlConnector, Body>,
     host: Url,

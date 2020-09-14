@@ -139,10 +139,6 @@ const EDGE_RUNTIME_MODE_KEY: &str = "Mode";
 #[cfg(feature = "runtime-docker")]
 const EDGE_RUNTIME_MODE: &str = "iotedged";
 
-/// This is the edge runtime mode - it should be kubernetes, when iotedged starts edge runtime in kubernetes mode.
-#[cfg(feature = "runtime-kubernetes")]
-const EDGE_RUNTIME_MODE: &str = "kubernetes";
-
 /// The HSM lib expects this variable to be set with home directory of the daemon.
 const HOMEDIR_KEY: &str = "IOTEDGE_HOMEDIR";
 
@@ -327,14 +323,13 @@ where
             ))?;
 
         macro_rules! start_edgelet {
-            ($key_store:ident, $provisioning_result:ident, $root_key:ident, $force_reprovision:ident, $id_cert_thumprint:ident, $provision:ident,) => {{
+            ($provisioning_result:ident, $force_reprovision:ident,) => {{
                 info!("Finished provisioning edge device.");
 
                 let runtime = init_runtime::<M>(
                     settings.clone(),
                     &mut tokio_runtime,
                     $provisioning_result.clone(),
-                    crypto.clone(),
                 )?;
 
                 // Normally iotedged will stop all modules when it shuts down. But if it crashed,
@@ -353,34 +348,37 @@ where
                     ))?;
                 info!("Finished stopping modules.");
 
-                if $force_reprovision ||
-                    ($provisioning_result.reconfigure() != ReprovisioningStatus::DeviceDataNotUpdated) {
-                    // If this device was re-provisioned and the device key was updated it causes
-                    // module keys to be obsoleted in IoTHub from the previous provisioning. We therefore
-                    // delete all containers after each DPS provisioning run so that IoTHub can be updated
-                    // with new module keys when the deployment is executed by EdgeAgent.
-                    info!(
-                        "Reprovisioning status {:?} will trigger reconfiguration of modules.",
-                        $provisioning_result.reconfigure()
-                    );
-
+                // if $force_reprovision ||
+                //     ($provisioning_result.reconfigure() != ReprovisioningStatus::DeviceDataNotUpdated) {
+                //     // If this device was re-provisioned and the device key was updated it causes
+                //     // module keys to be obsoleted in IoTHub from the previous provisioning. We therefore
+                //     // delete all containers after each DPS provisioning run so that IoTHub can be updated
+                //     // with new module keys when the deployment is executed by EdgeAgent.
+                //     info!(
+                //         "Reprovisioning status {:?} will trigger reconfiguration of modules.",
+                //         $provisioning_result.reconfigure()
+                //     );
+                
+                //TODO: Removing all modules on every restart for now.
+                //      When should module runtime remove containers? Should it be based on some cached 
+                //      provisioning result?
                     tokio_runtime
                         .block_on(runtime.remove_all())
                         .context(ErrorKind::Initialize(
                             InitializeErrorReason::RemoveExistingModules,
                         ))?;
-                }
+                // }
 
                 // Detect if the settings were changed and if the device needs to be reconfigured
-                check_settings_state::<M, _>(
-                    &cache_subdir_path,
-                    EDGE_SETTINGS_STATE_FILENAME,
-                    &settings,
-                    &runtime,
-                    &crypto,
-                    &mut tokio_runtime,
-                    $id_cert_thumprint,
-                )?;
+                // check_settings_state::<M, _>(
+                //     &cache_subdir_path,
+                //     EDGE_SETTINGS_STATE_FILENAME,
+                //     &settings,
+                //     &runtime,
+                //     &crypto,
+                //     &mut tokio_runtime,
+                //     $id_cert_thumprint,
+                // )?;
 
                 let cfg = WorkloadData::new(
                     $provisioning_result.hub_name().to_string(),
@@ -392,24 +390,30 @@ where
                 // This "do-while" loop runs until a StartApiReturnStatus::Shutdown
                 // is received. If the TLS cert needs a restart, we will loop again.
                 loop {
-                    let (code, should_reprovision) = start_api::<_, _, _, _, _, M>(
+                    let (code, should_reprovision) = start_api::<_, _, _, M>(
                         &settings,
                         hyper_client.clone(),
                         &runtime,
-                        &$key_store,
                         cfg.clone(),
-                        $root_key.clone(),
                         make_shutdown_signal(),
-                        &crypto,
                         &mut tokio_runtime,
                     )?;
 
                     if should_reprovision {
-                        let reprovision = $provision.reprovision().map_err(|err| {
-                            return Error::from(err.context(ErrorKind::ReprovisionFailure))
+                        let url = settings.endpoints().aziot_identityd_uri().clone();
+                        let key_url = settings.endpoints().aziot_keyd_uri().clone();
+                        let client = identity_client::IdentityClient::new().map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
+                        let _device = client.get_device("api_version")
+                        .and_then(move |identity| {
+                            debug!("{:?}", identity);
+                            Ok(())
                         });
 
-                        tokio_runtime.block_on(reprovision)?;
+                        tokio_runtime
+                            .block_on(_device)
+                            .context(ErrorKind::Initialize(
+                                InitializeErrorReason::DpsProvisioningClient,
+                            ))?;
 
                         // Return an error here to let the daemon exit with an error code.
                         // This will make `systemd` restart the daemon which will re-execute the
@@ -429,26 +433,43 @@ where
         info!("Obtaining edge device provisioning data...");
         
         //TODO: Invoke Identity Service client
+        let url = settings.endpoints().aziot_identityd_uri().clone();
+        let key_url = settings.endpoints().aziot_keyd_uri().clone();
         let client = identity_client::IdentityClient::new().map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
+
         let _device = client.get_device("api_version")
         .and_then(move |identity| {
             debug!("{:?}", identity);
             Ok(())
         });
-        // start_edgelet!(
-        //     key_store,
-        //     provisioning_result,
-        //     root_key,
-        //     force_module_reprovision,
-        //     None,
-        //     manual,
-        // );
+
+	    // let key_connector = http_common::Connector::new(&key_url).map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
+        // let key_client = aziot_key_client::Client::new(key_connector);
+
+        // let device_id = "device-id-iotedged-test";
+
+        // let _device_id_key_pair_handle =
+        //     key_client.create_key_pair_if_not_exists(device_id, Some("ec-p256:rsa-2048:*")).unwrap();
 
         tokio_runtime
             .block_on(_device)
             .context(ErrorKind::Initialize(
                 InitializeErrorReason::DpsProvisioningClient,
             ))?;
+        
+        let provisioning_result =  ProvisioningResult::new(
+                "d1",
+                "h1",
+                None,
+                ReprovisioningStatus::DeviceDataNotUpdated,
+                None,
+            );
+
+        start_edgelet!(
+            provisioning_result,
+            force_module_reprovision,
+            None,
+        );
 
         info!("Shutdown complete.");
         Ok(())
@@ -990,30 +1011,17 @@ where
 }
 
 #[allow(clippy::too_many_arguments)]
-fn start_api<HC, K, F, C, W, M>(
+fn start_api<HC, F, W, M>(
     settings: &M::Settings,
     hyper_client: HC,
     runtime: &M::ModuleRuntime,
-    key_store: &DerivedKeyStore<K>,
     workload_config: W,
-    root_key: K,
     shutdown_signal: F,
-    crypto: &C,
     tokio_runtime: &mut tokio::runtime::Runtime,
 ) -> Result<(StartApiReturnStatus, bool), Error>
 where
     F: Future<Item = (), Error = ()> + Send + 'static,
     HC: ClientImpl + 'static,
-    K: Sign + Clone + Send + Sync + 'static,
-    C: CreateCertificate
-        + Decrypt
-        + Encrypt
-        + GetTrustBundle
-        + MasterEncryptionKey
-        + Clone
-        + Send
-        + Sync
-        + 'static,
     W: WorkloadConfig + Clone + Send + Sync + 'static,
     M::ModuleRuntime: Authenticator<Request = Request<Body>> + Send + Sync + Clone + 'static,
     M: MakeModuleRuntime + 'static,
@@ -1026,7 +1034,7 @@ where
 {
     let iot_hub_name = workload_config.iot_hub_name().to_string();
     let device_id = workload_config.device_id().to_string();
-    let token_source = SasTokenSource::new(iot_hub_name.clone(), device_id.clone(), root_key);
+    let token_source = SasTokenSource::new(iot_hub_name.clone(), device_id.clone());
     let upstream_gateway = format!(
         "https://{}",
         workload_config.parent_hostname().unwrap_or(&iot_hub_name)
@@ -1059,6 +1067,10 @@ where
         ErrorKind::Initialize(InitializeErrorReason::CreateCertificateManager),
     )?;
 
+    let id_mgr = identity_client::IdentityClient::new().context(
+        ErrorKind::Initialize(InitializeErrorReason::ManagementService)
+    )?;
+
     // Create the certificate management timer and channel
     let (restart_tx, restart_rx) = oneshot::channel();
 
@@ -1081,18 +1093,16 @@ where
     let mgmt = start_management::<_, _, _, M>(
         settings,
         runtime,
-        &id_man,
+        id_mgr,
         mgmt_rx,
         cert_manager.clone(),
         mgmt_stop_and_reprovision_tx,
     );
 
-    let workload = start_workload::<_, _, _, _, M>(
+    let workload = start_workload::<_, _, M>(
         settings,
-        key_store,
         runtime,
         work_rx,
-        crypto,
         cert_manager,
         workload_config,
     );
@@ -1192,7 +1202,6 @@ fn init_runtime<M>(
     settings: M::Settings,
     tokio_runtime: &mut tokio::runtime::Runtime,
     provisioning_result: M::ProvisioningResult,
-    crypto: Crypto,
 ) -> Result<M::ModuleRuntime, Error>
 where
     M: MakeModuleRuntime + Send + 'static,
@@ -1201,7 +1210,7 @@ where
 {
     info!("Initializing the module runtime...");
     let runtime = tokio_runtime
-        .block_on(M::make_runtime(settings, provisioning_result, crypto))
+        .block_on(M::make_runtime(settings, provisioning_result))
         .context(ErrorKind::Initialize(InitializeErrorReason::ModuleRuntime))?;
     info!("Finished initializing the module runtime.");
 
@@ -1210,7 +1219,7 @@ where
 
 fn start_runtime<K, HC, M>(
     runtime: M::ModuleRuntime,
-    id_man: &HubIdentityManager<DerivedKeyStore<K>, HC, K>,
+    id_man: &HubIdentityManager<DerivedKeyStore<K>, HC>,
     hostname: &str,
     device_id: &str,
     settings: &M::Settings,
@@ -1277,17 +1286,6 @@ where
         settings.connect().workload_uri().to_string(),
         settings.connect().management_uri().to_string(),
     );
-    #[cfg(feature = "runtime-kubernetes")]
-    let (workload_uri, management_uri) = (
-        format!(
-            "http://localhost:{}",
-            settings.connect().workload_uri().port().unwrap_or(80u16)
-        ),
-        format!(
-            "http://localhost:{}",
-            settings.connect().management_uri().port().unwrap_or(80u16)
-        ),
-    );
 
     env.insert(WORKLOAD_URI_KEY.to_string(), workload_uri);
     env.insert(MANAGEMENT_URI_KEY.to_string(), management_uri);
@@ -1306,7 +1304,7 @@ where
 fn start_management<C, K, HC, M>(
     settings: &M::Settings,
     runtime: &M::ModuleRuntime,
-    id_man: &HubIdentityManager<DerivedKeyStore<K>, HC, K>,
+    identity_client: IdentityClient,
     shutdown: Receiver<()>,
     cert_manager: Arc<CertificateManager<C>>,
     initiate_shutdown_and_reprovision: mpsc::UnboundedSender<()>,
@@ -1328,7 +1326,7 @@ where
     let url = settings.listen().management_uri().clone();
     let min_protocol_version = settings.listen().min_tls_version();
 
-    ManagementService::new(runtime, id_man, initiate_shutdown_and_reprovision)
+    ManagementService::new(runtime, identity_client, initiate_shutdown_and_reprovision)
         .then(move |service| -> Result<_, Error> {
             let service = service.context(ErrorKind::Initialize(
                 InitializeErrorReason::ManagementService,
@@ -1352,26 +1350,14 @@ where
         .flatten()
 }
 
-fn start_workload<K, C, CE, W, M>(
+fn start_workload<CE, W, M>(
     settings: &M::Settings,
-    key_store: &K,
     runtime: &M::ModuleRuntime,
     shutdown: Receiver<()>,
-    crypto: &C,
     cert_manager: Arc<CertificateManager<CE>>,
     config: W,
 ) -> impl Future<Item = (), Error = Error>
 where
-    K: KeyStore + Clone + Send + Sync + 'static,
-    C: CreateCertificate
-        + Decrypt
-        + Encrypt
-        + GetTrustBundle
-        + MasterEncryptionKey
-        + Clone
-        + Send
-        + Sync
-        + 'static,
     CE: CreateCertificate + Clone,
     W: WorkloadConfig + Clone + Send + Sync + 'static,
     M: MakeModuleRuntime + 'static,
@@ -1710,7 +1696,6 @@ mod tests {
         let runtime = TestRuntime::make_runtime(
             settings.clone(),
             TestProvisioningResult::new(),
-            TestHsm::default(),
         )
         .wait()
         .unwrap()
@@ -1753,7 +1738,6 @@ mod tests {
         let runtime = TestRuntime::make_runtime(
             settings.clone(),
             TestProvisioningResult::new(),
-            TestHsm::default(),
         )
         .wait()
         .unwrap()
@@ -1795,7 +1779,6 @@ mod tests {
         let runtime = TestRuntime::make_runtime(
             settings.clone(),
             TestProvisioningResult::new(),
-            TestHsm::default(),
         )
         .wait()
         .unwrap()
@@ -1875,7 +1858,6 @@ mod tests {
         let runtime = TestRuntime::make_runtime(
             settings.clone(),
             TestProvisioningResult::new(),
-            TestHsm::default(),
         )
         .wait()
         .unwrap()
@@ -1946,7 +1928,6 @@ mod tests {
         let runtime = TestRuntime::make_runtime(
             settings.clone(),
             TestProvisioningResult::new(),
-            TestHsm::default(),
         )
         .wait()
         .unwrap()

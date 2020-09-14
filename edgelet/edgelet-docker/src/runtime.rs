@@ -18,7 +18,7 @@ use docker::apis::client::APIClient;
 use docker::apis::configuration::Configuration;
 use docker::models::{ContainerCreateBody, InlineResponse200, Ipam, NetworkConfig};
 use edgelet_core::{
-    AuthId, Authenticator, GetTrustBundle, Ipam as CoreIpam, LogOptions, MakeModuleRuntime,
+    AuthId, Authenticator, Ipam as CoreIpam, LogOptions, MakeModuleRuntime,
     MobyNetwork, Module, ModuleId, ModuleRegistry, ModuleRuntime, ModuleRuntimeState, ModuleSpec,
     RegistryOperation, RuntimeOperation, SystemInfo as CoreSystemInfo, SystemResources, UrlExt,
 };
@@ -196,7 +196,6 @@ impl MakeModuleRuntime for DockerModuleRuntime {
     fn make_runtime(
         settings: Settings,
         _: ProvisioningResult,
-        _: impl GetTrustBundle,
     ) -> Self::Future {
         info!("Initializing module runtime...");
         let created = init_client(settings.moby_runtime().uri()).map_or_else(
@@ -1048,7 +1047,7 @@ mod tests {
     use super::{
         authenticate, future, list_with_details, parse_get_response, AuthId, Authenticator,
         BTreeMap, Body, CoreSystemInfo, Deserializer, DockerModuleRuntime, DockerModuleTop,
-        Duration, Error, ErrorKind, Future, GetTrustBundle, InlineResponse200, LogOptions,
+        Duration, Error, ErrorKind, Future, InlineResponse200, LogOptions,
         MakeModuleRuntime, Module, ModuleId, ModuleRuntime, ModuleRuntimeState, ModuleSpec, Pid,
         ProvisioningResult, Request, Settings, Stream, SystemResources,
     };
@@ -1063,9 +1062,8 @@ mod tests {
 
     use edgelet_core::{
         Certificates, Connect, Listen, ModuleRegistry, ModuleTop, Provisioning, RuntimeSettings,
-        WatchdogSettings,
+        WatchdogSettings, Endpoints,
     };
-    use edgelet_test_utils::crypto::TestHsm;
     use provisioning::ReprovisioningStatus;
 
     fn provisioning_result() -> ProvisioningResult {
@@ -1076,10 +1074,6 @@ mod tests {
             ReprovisioningStatus::DeviceDataNotUpdated,
             None,
         )
-    }
-
-    fn crypto() -> impl GetTrustBundle {
-        TestHsm::default()
     }
 
     fn make_settings(merge_json: Option<JsonValue>) -> Settings {
@@ -1132,7 +1126,7 @@ mod tests {
                 "uri": "foo:///this/is/not/valid"
             }
         })));
-        let err = DockerModuleRuntime::make_runtime(settings, provisioning_result(), crypto())
+        let err = DockerModuleRuntime::make_runtime(settings, provisioning_result())
             .wait()
             .unwrap_err();
         assert!(failure::Fail::iter_chain(&err).any(|err| err
@@ -1148,7 +1142,7 @@ mod tests {
                 "uri": "unix:///this/file/does/not/exist"
             }
         })));
-        let err = DockerModuleRuntime::make_runtime(settings, provisioning_result(), crypto())
+        let err = DockerModuleRuntime::make_runtime(settings, provisioning_result())
             .wait()
             .unwrap_err();
         assert!(failure::Fail::iter_chain(&err)
@@ -1384,6 +1378,10 @@ mod tests {
         fn watchdog(&self) -> &WatchdogSettings {
             unimplemented!()
         }
+
+        fn endpoints(&self) -> &Endpoints {
+            unimplemented!()
+        }
     }
 
     #[derive(Clone, Copy, Debug, PartialEq)]
@@ -1476,7 +1474,6 @@ mod tests {
         fn make_runtime(
             _settings: Self::Settings,
             _provisioning_result: Self::ProvisioningResult,
-            _crypto: impl GetTrustBundle,
         ) -> Self::Future {
             unimplemented!()
         }

@@ -21,7 +21,7 @@ sha2 = "0.7.0"
 tokio = "0.1.8"
 tokio-signal = "0.2"
 native-tls = "0.2"
-url = "1.7"
+url = "2"
 url_serde = "0.2"
 
 hsm = { path = "../hsm-rs"}
@@ -34,16 +34,14 @@ edgelet-http = { path = "../edgelet-http" }
 edgelet-http-external-provisioning = { path = "../edgelet-http-external-provisioning" }
 edgelet-http-mgmt = { path = "../edgelet-http-mgmt" }
 edgelet-http-workload = { path = "../edgelet-http-workload" }
-edgelet-iothub = { path = "../edgelet-iothub" }
-edgelet-kube = { path = "../edgelet-kube", optional = true }
 edgelet-utils = { path = "../edgelet-utils" }
 iothubservice = { path = "../iothubservice" }
-kube-client = { path = "../kube-client", optional = true }
 provisioning = { path = "../provisioning" }
 signal-future = { path = "../signal-future" }
 aziot-key-client = { path = "../../aziot/key/aziot-key-client" }
 cert-client = { path = "../cert-client" }
 identity-client = { path = "../identity-client" }
+http-common = { path = "../../aziot/http-common" }
 
 [target.'cfg(windows)'.dependencies]
 windows-service = "0.1"
@@ -61,4 +59,3 @@ edgelet-test-utils = { path = "../edgelet-test-utils" }
 [features]
 default = ["runtime-docker"]
 runtime-docker = []
-runtime-kubernetes = ["edgelet-kube", "kube-client", "hyper-tls"]

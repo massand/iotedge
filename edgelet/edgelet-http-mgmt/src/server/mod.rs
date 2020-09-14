@@ -10,8 +10,9 @@ use lazy_static::lazy_static;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+use identity_client::client::IdentityClient;
 use edgelet_core::{
-    Authenticator, IdentityManager, Module, ModuleRuntime, ModuleRuntimeErrorReason, Policy,
+    Authenticator, Module, ModuleRuntime, ModuleRuntimeErrorReason, Policy,
 };
 use edgelet_http::authentication::Authentication;
 use edgelet_http::authorization::Authorization;
@@ -25,7 +26,8 @@ mod module;
 mod system_info;
 
 use self::device_actions::ReprovisionDevice;
-use self::identity::{CreateIdentity, DeleteIdentity, ListIdentities, UpdateIdentity};
+use self::identity::{CreateIdentity, DeleteIdentity, ListIdentities};
+//use self::identity::{UpdateIdentity};
 pub use self::module::*;
 use self::system_info::{GetSystemInfo, GetSystemResources};
 use crate::error::{Error, ErrorKind};
@@ -42,7 +44,7 @@ pub struct ManagementService {
 impl ManagementService {
     pub fn new<M, I>(
         runtime: &M,
-        identity: &I,
+        identity_client: IdentityClient,
         initiate_shutdown_and_reprovision: UnboundedSender<()>,
     ) -> impl Future<Item = Self, Error = Error>
     where
@@ -50,8 +52,6 @@ impl ManagementService {
         for<'r> &'r <M as ModuleRuntime>::Error: Into<ModuleRuntimeErrorReason>,
         <M::Module as Module>::Config: DeserializeOwned + Serialize,
         M::Logs: Into<Body>,
-        I: IdentityManager + Clone + Send + Sync + 'static,
-        I::Identity: Serialize,
         <M::AuthenticateFuture as Future>::Error: Fail,
     {
         let router = router!(
@@ -66,10 +66,9 @@ impl ManagementService {
             post    Version2018_06_28 runtime Policy::Anonymous             => "/modules/(?P<name>[^/]+)/restart"   => RestartModule::new(runtime.clone()),
             get     Version2018_06_28 runtime Policy::Anonymous             => "/modules/(?P<name>[^/]+)/logs"      => ModuleLogs::new(runtime.clone()),
 
-            get     Version2018_06_28 runtime Policy::Module(&*AGENT_NAME)  => "/identities"                        => ListIdentities::new(identity.clone()),
-            post    Version2018_06_28 runtime Policy::Module(&*AGENT_NAME)  => "/identities"                        => CreateIdentity::new(identity.clone()),
-            put     Version2018_06_28 runtime Policy::Module(&*AGENT_NAME)  => "/identities/(?P<name>[^/]+)"        => UpdateIdentity::new(identity.clone()),
-            delete  Version2018_06_28 runtime Policy::Module(&*AGENT_NAME)  => "/identities/(?P<name>[^/]+)"        => DeleteIdentity::new(identity.clone()),
+            get     Version2018_06_28 runtime Policy::Module(&*AGENT_NAME)  => "/identities"                        => ListIdentities::new(identity_client.clone()),
+            post    Version2018_06_28 runtime Policy::Module(&*AGENT_NAME)  => "/identities"                        => CreateIdentity::new(identity_client.clone()),
+            delete  Version2018_06_28 runtime Policy::Module(&*AGENT_NAME)  => "/identities/(?P<name>[^/]+)"        => DeleteIdentity::new(identity_client.clone()),
 
             get     Version2018_06_28 runtime Policy::Anonymous             => "/systeminfo"                        => GetSystemInfo::new(runtime.clone()),
             get     Version2019_11_05 runtime Policy::Anonymous             => "/systeminfo/resources"              => GetSystemResources::new(runtime.clone()),

@@ -53,7 +53,7 @@ pub use settings::{
     AttestationMethod, Certificates, Connect, Dps, External, Listen, Manual, ManualAuthMethod,
     ManualDeviceConnectionString, ManualX509Auth, Protocol, Provisioning, ProvisioningType,
     RetryLimit, RuntimeSettings, Settings, SymmetricKeyAttestationInfo, TpmAttestationInfo,
-    WatchdogSettings, X509AttestationInfo,
+    WatchdogSettings, X509AttestationInfo, Endpoints,
 };
 pub use workload::WorkloadConfig;
 

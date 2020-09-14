@@ -29,9 +29,7 @@ pub const DEFAULT_CONNECTION_STRING: &str = "<ADD DEVICE CONNECTION STRING HERE>
 pub struct ManualX509Auth {
     iothub_hostname: String,
     device_id: String,
-    #[serde(with = "url_serde")]
     identity_cert: Url,
-    #[serde(with = "url_serde")]
     identity_pk: Url,
 }
 
@@ -271,9 +269,7 @@ impl SymmetricKeyAttestationInfo {
 pub struct X509AttestationInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     registration_id: Option<String>,
-    #[serde(with = "url_serde")]
     identity_cert: Url,
-    #[serde(with = "url_serde")]
     identity_pk: Url,
 }
 
@@ -318,7 +314,6 @@ impl X509AttestationInfo {
 
 #[derive(Clone, Debug, serde_derive::Serialize)]
 pub struct Dps {
-    #[serde(with = "url_serde")]
     global_endpoint: Url,
     scope_id: String,
     attestation: AttestationMethod,
@@ -331,7 +326,6 @@ impl<'de> serde::Deserialize<'de> for Dps {
     {
         #[derive(Debug, serde_derive::Deserialize)]
         struct Inner {
-            #[serde(with = "url_serde")]
             global_endpoint: Url,
             scope_id: String,
             registration_id: Option<String>,
@@ -381,7 +375,6 @@ impl Dps {
 #[derive(Clone, Debug, serde_derive::Deserialize, serde_derive::Serialize)]
 #[serde(rename_all = "lowercase")]
 pub struct External {
-    #[serde(with = "url_serde")]
     endpoint: Url,
 }
 
@@ -426,9 +419,7 @@ pub enum ProvisioningType {
 
 #[derive(Clone, Debug, serde_derive::Deserialize, serde_derive::Serialize)]
 pub struct Connect {
-    #[serde(with = "url_serde")]
     workload_uri: Url,
-    #[serde(with = "url_serde")]
     management_uri: Url,
 }
 
@@ -444,9 +435,7 @@ impl Connect {
 
 #[derive(Clone, Debug, serde_derive::Deserialize, serde_derive::Serialize)]
 pub struct Listen {
-    #[serde(with = "url_serde")]
     workload_uri: Url,
-    #[serde(with = "url_serde")]
     management_uri: Url,
     #[serde(default = "Protocol::default")]
     min_tls_version: Protocol,
@@ -690,6 +679,7 @@ pub trait RuntimeSettings {
     fn homedir(&self) -> &Path;
     fn certificates(&self) -> &Certificates;
     fn watchdog(&self) -> &WatchdogSettings;
+    fn endpoints(&self) -> &Endpoints;
 }
 
 #[derive(Clone, Debug, serde_derive::Deserialize, serde_derive::Serialize)]
@@ -704,6 +694,7 @@ pub struct Settings<T> {
     certificates: Option<Certificates>,
     #[serde(default)]
     watchdog: WatchdogSettings,
+    endpoints: Endpoints,
 }
 
 impl<T> RuntimeSettings for Settings<T>
@@ -757,6 +748,31 @@ where
 
     fn watchdog(&self) -> &WatchdogSettings {
         &self.watchdog
+    }
+
+    fn endpoints(&self) -> &Endpoints {
+        &self.endpoints
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, serde_derive::Deserialize, serde_derive::Serialize)]
+pub struct Endpoints {
+	aziot_certd_uri: Url,
+    aziot_keyd_uri: Url,
+    aziot_identityd_uri: Url,
+}
+
+impl Endpoints {
+    pub fn aziot_certd_uri(&self) -> &Url {
+        &self.aziot_certd_uri
+    }
+
+    pub fn aziot_keyd_uri(&self) -> &Url {
+        &self.aziot_keyd_uri
+    }
+
+    pub fn aziot_identityd_uri(&self) -> &Url {
+        &self.aziot_identityd_uri
     }
 }
 

@@ -9,8 +9,6 @@ use log::info;
 
 #[cfg(feature = "runtime-docker")]
 use edgelet_docker::Settings;
-#[cfg(feature = "runtime-kubernetes")]
-use edgelet_kube::Settings;
 
 use crate::error::{Error, ErrorKind, InitializeErrorReason};
 use crate::logging;

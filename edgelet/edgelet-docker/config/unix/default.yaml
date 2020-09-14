@@ -25,5 +25,7 @@ moby_runtime:
   uri: "unix:///var/run/docker.sock"
   network: "azure-iot-edge"
 
-certificates:
-  auto_generated_ca_lifetime_days: 90
+endpoints:
+  aziot_keyd: "unix:///var/run/aziot/keyd.sock"
+  aziot_certd: "unix:///var/run/aziot/certd.sock"
+  aziot_identityd: "unix:///var/run/aziot/identityd.sock"

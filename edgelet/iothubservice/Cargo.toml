@@ -13,7 +13,7 @@ percent-encoding = "1.0"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
-url = "1.7"
+url = "2"
 
 edgelet-http = { path = "../edgelet-http" }
 edgelet-utils = { path = "../edgelet-utils" }
@@ -24,4 +24,4 @@ clap = "2.31"
 hyper-tls = "0.3"
 tokio = "0.1.8"
 typed-headers = "0.1"
-url = "1.7"
+url = "2"
