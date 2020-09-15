@@ -36,7 +36,7 @@ use std::fs;
 use std::fs::{DirBuilder, File, OpenOptions};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use failure::{Context, Fail, ResultExt};
@@ -75,7 +75,6 @@ use edgelet_http::{HyperExt, MaybeProxyClient, PemCertificate, TlsAcceptorParams
 use edgelet_http_external_provisioning::ExternalProvisioningClient;
 use edgelet_http_mgmt::ManagementService;
 use edgelet_http_workload::WorkloadService;
-use edgelet_iothub::{HubIdentityManager, SasTokenSource};
 use edgelet_utils::log_failure;
 pub use error::{Error, ErrorKind, InitializeErrorReason};
 use hsm::tpm::Tpm;
@@ -434,7 +433,6 @@ where
         
         //TODO: Invoke Identity Service client
         let url = settings.endpoints().aziot_identityd_uri().clone();
-        let key_url = settings.endpoints().aziot_keyd_uri().clone();
         let client = identity_client::IdentityClient::new().map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
 
         let _device = client.get_device("api_version")
@@ -443,10 +441,7 @@ where
             Ok(())
         });
 
-	    // let key_connector = http_common::Connector::new(&key_url).map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
-        // let key_client = aziot_key_client::Client::new(key_connector);
-
-        // let device_id = "device-id-iotedged-test";
+// let device_id = "device-id-iotedged-test";
 
         // let _device_id_key_pair_handle =
         //     key_client.create_key_pair_if_not_exists(device_id, Some("ec-p256:rsa-2048:*")).unwrap();
@@ -468,7 +463,6 @@ where
         start_edgelet!(
             provisioning_result,
             force_module_reprovision,
-            None,
         );
 
         info!("Shutdown complete.");
@@ -1034,27 +1028,16 @@ where
 {
     let iot_hub_name = workload_config.iot_hub_name().to_string();
     let device_id = workload_config.device_id().to_string();
-    let token_source = SasTokenSource::new(iot_hub_name.clone(), device_id.clone());
     let upstream_gateway = format!(
         "https://{}",
         workload_config.parent_hostname().unwrap_or(&iot_hub_name)
     );
-    let http_client = HttpClient::new(
-        hyper_client,
-        Some(token_source),
-        IOTHUB_API_VERSION.to_string(),
-        Url::parse(&upstream_gateway)
-            .context(ErrorKind::Initialize(InitializeErrorReason::HttpClient))?,
-    )
-    .context(ErrorKind::Initialize(InitializeErrorReason::HttpClient))?;
-    let device_client = DeviceClient::new(http_client, device_id.clone())
-        .context(ErrorKind::Initialize(InitializeErrorReason::DeviceClient))?;
-    let id_man = HubIdentityManager::new(key_store.clone(), device_client);
 
     let (mgmt_tx, mgmt_rx) = oneshot::channel();
     let (mgmt_stop_and_reprovision_tx, mgmt_stop_and_reprovision_rx) = mpsc::unbounded();
     let (work_tx, work_rx) = oneshot::channel();
 
+    //TODO: Create CSR with props by getting device CA and using that CA as issuer for TLS cert
     let edgelet_cert_props = CertificateProperties::new(
         settings.certificates().auto_generated_ca_lifetime_seconds(),
         IOTEDGED_TLS_COMMONNAME.to_string(),
@@ -1063,6 +1046,8 @@ where
     )
     .with_issuer(CertificateIssuer::DeviceCa);
 
+    //TODO: Call CS using edgelet_cert_props to generate new TLS cert for API services
+    //      (when https is configured). Pass PEM into cert manager
     let cert_manager = CertificateManager::new(crypto.clone(), edgelet_cert_props).context(
         ErrorKind::Initialize(InitializeErrorReason::CreateCertificateManager),
     )?;
@@ -1375,7 +1360,10 @@ where
     let url = settings.listen().workload_uri().clone();
     let min_protocol_version = settings.listen().min_tls_version();
 
-    WorkloadService::new(key_store, crypto.clone(), runtime, config)
+    let key_url = settings.endpoints().aziot_keyd_uri().clone();
+    let key_connector = http_common::Connector::new(&key_url).map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
+
+    WorkloadService::new(runtime, key_connector, config)
         .then(move |service| -> Result<_, Error> {
             let service = service.context(ErrorKind::Initialize(
                 InitializeErrorReason::WorkloadService,

@@ -27,7 +27,6 @@ mod system_info;
 
 use self::device_actions::ReprovisionDevice;
 use self::identity::{CreateIdentity, DeleteIdentity, ListIdentities};
-//use self::identity::{UpdateIdentity};
 pub use self::module::*;
 use self::system_info::{GetSystemInfo, GetSystemResources};
 use crate::error::{Error, ErrorKind};

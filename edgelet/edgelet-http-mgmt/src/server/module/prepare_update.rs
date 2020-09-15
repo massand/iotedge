@@ -92,7 +92,6 @@ mod tests {
     use chrono::prelude::*;
     use edgelet_core::{MakeModuleRuntime, ModuleRuntimeState, ModuleStatus};
     use edgelet_http::route::Parameters;
-    use edgelet_test_utils::crypto::TestHsm;
     use edgelet_test_utils::module::{
         TestConfig, TestModule, TestProvisioningResult, TestRegistry, TestRuntime, TestSettings,
     };

@@ -26,7 +26,7 @@ use docker::models::{
 };
 
 use edgelet_core::{
-    GetTrustBundle, ImagePullPolicy, LogOptions, LogTail, MakeModuleRuntime, Module,
+    ImagePullPolicy, LogOptions, LogTail, MakeModuleRuntime, Module,
     ModuleRegistry, ModuleRuntime, ModuleSpec, RegistryOperation, RuntimeOperation,
 };
 use edgelet_docker::{DockerConfig, DockerModuleRuntime, Settings};

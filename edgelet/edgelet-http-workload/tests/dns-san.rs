@@ -34,7 +34,6 @@ use edgelet_core::{
 };
 use edgelet_hsm::{Crypto, HsmLock};
 use edgelet_http_workload::WorkloadService;
-use edgelet_test_utils::crypto::TestHsm;
 use edgelet_test_utils::module::{
     TestConfig, TestModule, TestProvisioningResult, TestRuntime, TestSettings,
 };

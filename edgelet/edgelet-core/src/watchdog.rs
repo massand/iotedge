@@ -222,6 +222,7 @@ fn update_identity<I>(
 where
     I: 'static + IdentityManager + Clone,
 {
+    //TODO: delete (ignore if doesn't exist) and create edgeAgent identity
     let mut id_mgr_copy = id_mgr.clone();
     id_mgr
         .get(IdentitySpec::new(module_id))

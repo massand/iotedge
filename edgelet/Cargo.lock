@@ -667,6 +667,7 @@ dependencies = [
 name = "edgelet-http-workload"
 version = "0.1.0"
 dependencies = [
+ "aziot-key-client",
  "base64 0.9.3",
  "chrono",
  "edgelet-core",
@@ -677,6 +678,7 @@ dependencies = [
  "edgelet-utils",
  "failure",
  "futures",
+ "http-common",
  "hyper 0.12.35",
  "log",
  "native-tls",
