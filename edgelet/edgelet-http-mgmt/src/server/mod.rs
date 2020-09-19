@@ -10,7 +10,6 @@ use lazy_static::lazy_static;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use identity_client::client::IdentityClient;
 use edgelet_core::{
     Authenticator, Module, ModuleRuntime, ModuleRuntimeErrorReason, Policy,
 };
@@ -19,6 +18,7 @@ use edgelet_http::authorization::Authorization;
 use edgelet_http::route::{Builder, RegexRecognizer, Router, RouterService};
 use edgelet_http::router;
 use edgelet_http::Version;
+use identity_client::client::IdentityClient;
 
 mod device_actions;
 mod identity;

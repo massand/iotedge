@@ -15,6 +15,7 @@ use edgelet_http::Error as HttpError;
 use http_common::Connector;
 use identity_client::client::IdentityClient;
 
+use super::get_key_handle;
 
 use crate::error::{EncryptionOperation, Error, ErrorKind};
 use crate::IntoResponse;
@@ -69,7 +70,7 @@ impl Handler<Parameters> for SignHandler
             .into_future()
             .flatten()
             .and_then(|(id, request)| -> Result<_, Error> {
-                let fut = get_key_handle(id_mgr.clone(),&id);
+                let fut = get_key_handle(id_mgr.clone(), &id);
                 let data: Vec<u8> = base64::decode(request.data()).context(ErrorKind::MalformedRequestBody)?;
                 let sig = fut.and_then(|k| { get_signature(self.key_store.clone(), k, data) } )
                 .and_then(|signature| -> Result<_, Error> {
@@ -93,22 +94,7 @@ impl Handler<Parameters> for SignHandler
     }
 }
 
-fn get_key_handle(identity_client: Arc<Mutex<IdentityClient>>, name: &str) -> impl Future<Item = KeyHandle, Error = Error> {
-    let id_mgr = identity_client.lock().unwrap();
-    id_mgr.get_module("2020-09-01", name)
-    .map_err(|_| Error::from(ErrorKind::GetIdentity))
-    .and_then(|identity| {
-        match identity {
-            aziot_identity_common::Identity::Aziot(spec) => {
-                spec.auth.map(|authInfo| {
-                    Ok(authInfo.key_handle)
-                }).expect("keyhandle missing")
-            }
-        }   
-    })
-}
-
-fn get_signature(key_client: Arc<Mutex<aziot_key_client::Client>>, key_handle: KeyHandle, data: Vec<u8> + 'static) -> impl Future<Item = Vec<u8>, Error = Error> {
+fn get_signature(key_client: Arc<Mutex<aziot_key_client::Client>>, key_handle: KeyHandle, data: Vec<u8>) -> impl Future<Item = Vec<u8>, Error = Error> {
     key_client
     .lock()
     .expect("lock error")
@@ -117,4 +103,5 @@ fn get_signature(key_client: Arc<Mutex<aziot_key_client::Client>>, key_handle: K
          aziot_key_common::SignMechanism::HmacSha256,
           data.as_bytes())
     .map_err(|_| Error::from(ErrorKind::GetIdentity))
+    .into_future()
 }

@@ -6,6 +6,8 @@ mod encrypt;
 mod sign;
 mod trust_bundle;
 
+use aziot_key_common::KeyHandle;
+use cert_client::client::CertificateClient;
 use edgelet_core::{
     Authenticator, Module,
     ModuleRuntime, ModuleRuntimeErrorReason, Policy, WorkloadConfig,
@@ -16,17 +18,20 @@ use edgelet_http::route::{Builder, RegexRecognizer, Router, RouterService};
 use edgelet_http::{router, Version};
 use edgelet_http_mgmt::ListModules;
 use http_common::Connector;
+use identity_client::client::IdentityClient;
+
 use failure::{Compat, Fail, ResultExt};
 use futures::{future, Future};
 use hyper::service::{NewService, Service};
 use hyper::{Body, Request};
 use serde::Serialize;
+use std::sync::{Arc, Mutex};
 
 // use self::cert::{IdentityCertHandler, ServerCertHandler};
 // use self::decrypt::DecryptHandler;
 // use self::encrypt::EncryptHandler;
-// use self::sign::SignHandler;
-// use self::trust_bundle::TrustBundleHandler;
+use self::sign::SignHandler;
+use self::trust_bundle::TrustBundleHandler;
 use crate::error::{Error, ErrorKind};
 
 #[derive(Clone)]
@@ -37,6 +42,8 @@ pub struct WorkloadService {
 impl WorkloadService {
     pub fn new<M, W>(
         runtime: &M,
+        identity_client: IdentityClient,
+        cert_client: CertificateClient,
         key_connector: Connector,
         _config: W,
     ) -> impl Future<Item = Self, Error = Error>
@@ -50,13 +57,13 @@ impl WorkloadService {
     {
         let router = router!(
             get   Version2018_06_28 runtime Policy::Anonymous => "/modules" => ListModules::new(runtime.clone()),
-            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/sign"     => SignHandler::new(key_connector.clone()),
+            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/sign"     => SignHandler::new(key_connector.clone(), identity_client.clone()),
             // post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/decrypt"  => DecryptHandler::new(hsm.clone()),
             // post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/encrypt"  => EncryptHandler::new(hsm.clone()),
             // post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/certificate/identity"            => IdentityCertHandler::new(hsm.clone(), config.clone()),
             // post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/certificate/server" => ServerCertHandler::new(hsm.clone(), config),
 
-            // get   Version2018_06_28 runtime Policy::Anonymous => "/trust-bundle" => TrustBundleHandler::new(hsm),
+            get   Version2018_06_28 runtime Policy::Anonymous => "/trust-bundle" => TrustBundleHandler::new(cert_client.clone()),
         );
 
         router.new_service().then(|inner| {
@@ -88,4 +95,20 @@ impl NewService for WorkloadService {
     fn new_service(&self) -> Self::Future {
         future::ok(self.clone())
     }
+}
+
+
+fn get_key_handle(identity_client: Arc<Mutex<IdentityClient>>, name: &str) -> impl Future<Item = KeyHandle, Error = Error> {
+    let id_mgr = identity_client.lock().unwrap();
+    id_mgr.get_module("2020-09-01", name)
+    .map_err(|_| Error::from(ErrorKind::GetIdentity))
+    .and_then(|identity| {
+        match identity {
+            aziot_identity_common::Identity::Aziot(spec) => {
+                spec.auth.map(|authInfo| {
+                    Ok(authInfo.key_handle)
+                }).expect("keyhandle missing")
+            }
+        }   
+    })
 }
