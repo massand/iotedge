@@ -22,7 +22,7 @@ mod server;
 pub use self::identity::IdentityCertHandler;
 pub use self::server::ServerCertHandler;
 
-fn cert_to_response<T: Certificate>(cert: &T, context: ErrorKind) -> Result<CertificateResponse> {
+fn cert_to_response<T: CoreCertificate>(cert: &T, context: ErrorKind) -> Result<CertificateResponse> {
     let cert_buffer = match cert.pem() {
         Ok(cert_buffer) => cert_buffer,
         Err(err) => return Err(Error::from(err.context(context))),
@@ -34,10 +34,10 @@ fn cert_to_response<T: Certificate>(cert: &T, context: ErrorKind) -> Result<Cert
     };
 
     let private_key = match cert.get_private_key() {
-        Ok(Some(PrivateKey::Ref(ref_))) => {
+        Ok(Some(CorePrivateKey::Ref(ref_))) => {
             PrivateKeyResponse::new("ref".to_string()).with_ref(ref_)
         }
-        Ok(Some(PrivateKey::Key(KeyBytes::Pem(buffer)))) => {
+        Ok(Some(CorePrivateKey::Key(KeyBytes::Pem(buffer)))) => {
             PrivateKeyResponse::new("key".to_string())
                 .with_bytes(String::from_utf8_lossy(buffer.as_ref()).to_string())
         }
@@ -66,7 +66,7 @@ fn compute_validity(expiration: &str, max_duration_sec: i64, context: ErrorKind)
 }
 
 fn refresh_cert(
-    cert_client: Arc<Mutex<CertificateClient>>,
+    cert_client: &Arc<Mutex<CertificateClient>>,
     alias: String,
     props: &CertificateProperties,
     context: ErrorKind,
@@ -138,12 +138,12 @@ fn refresh_cert(
         .expect("certificate client lock error")
         .create_cert(&alias, &csr, None)
         .map_err(|err| Err(Error::from(err.context(context))))
-        .map(|cert| { 
-            
+        .map(|cert| -> Result<_, Error> { 
+            let pk = privkey.private_key_to_pem_pkcs8().context(context)?;
+            let cert = Certificate::new(pk, cert);
             let cert = cert_to_response(&cert, context.clone())?;
-            
-         })
-
+            Ok(cert)
+         });
 
     let body = match serde_json::to_string(&cert) {
         Ok(body) => body,
@@ -163,11 +163,14 @@ fn refresh_cert(
 
 #[derive(Debug)]
 pub struct Certificate
-{}
+{
+    pem: Vec<u8>,
+    private_key: Vec<u8>,
+}
 
 impl Certificate {
-    pub fn new() -> Certificate {
-        Certificate {}
+    pub fn new(pem: Vec<u8>, private_key: Vec<u8>) -> Certificate {
+        Certificate { pem, private_key }
     }
 }
 
