@@ -18,7 +18,7 @@ pub const PATH_SEGMENT_ENCODE_SET: &percent_encoding::AsciiSet =
 	.add(b' ').add(b'"').add(b'<').add(b'>').add(b'`') // fragment percent-encode set
 	.add(b'#').add(b'?').add(b'{').add(b'}'); // path percent-encode set
 
-
+#[derive(Clone)]
 pub struct CertificateClient {
     client: HyperClient<UrlConnector, Body>,
     host: Url,

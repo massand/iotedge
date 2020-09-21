@@ -27,9 +27,9 @@ use hyper::{Body, Request};
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
 
-// use self::cert::{IdentityCertHandler, ServerCertHandler};
-// use self::decrypt::DecryptHandler;
-// use self::encrypt::EncryptHandler;
+use self::cert::{IdentityCertHandler, ServerCertHandler};
+use self::decrypt::DecryptHandler;
+use self::encrypt::EncryptHandler;
 use self::sign::SignHandler;
 use self::trust_bundle::TrustBundleHandler;
 use crate::error::{Error, ErrorKind};
@@ -45,7 +45,7 @@ impl WorkloadService {
         identity_client: IdentityClient,
         cert_client: CertificateClient,
         key_connector: Connector,
-        _config: W,
+        config: W,
     ) -> impl Future<Item = Self, Error = Error>
     where
         M: ModuleRuntime + Authenticator<Request = Request<Body>> + Clone + Send + Sync + 'static,
@@ -58,10 +58,10 @@ impl WorkloadService {
         let router = router!(
             get   Version2018_06_28 runtime Policy::Anonymous => "/modules" => ListModules::new(runtime.clone()),
             post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/sign"     => SignHandler::new(key_connector.clone(), identity_client.clone()),
-            // post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/decrypt"  => DecryptHandler::new(hsm.clone()),
-            // post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/encrypt"  => EncryptHandler::new(hsm.clone()),
-            // post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/certificate/identity"            => IdentityCertHandler::new(hsm.clone(), config.clone()),
-            // post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/certificate/server" => ServerCertHandler::new(hsm.clone(), config),
+            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/decrypt"  => DecryptHandler::new(key_connector.clone(), identity_client.clone()),
+            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/encrypt"  => EncryptHandler::new(key_connector.clone(), identity_client.clone()),
+            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/certificate/identity"            => IdentityCertHandler::new(cert_client.clone(), config.clone()),
+            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/certificate/server" => ServerCertHandler::new(cert_client.clone(), config),
 
             get   Version2018_06_28 runtime Policy::Anonymous => "/trust-bundle" => TrustBundleHandler::new(cert_client.clone()),
         );
