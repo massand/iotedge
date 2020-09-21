@@ -133,31 +133,29 @@ fn refresh_cert(
     let csr = csr.to_pem()
         .context(context)?;
 
-    let cert = cert_client
+    cert_client
         .lock()
         .expect("certificate client lock error")
         .create_cert(&alias, &csr, None)
         .map_err(|err| Err(Error::from(err.context(context))))
-        .map(|cert| -> Result<_, Error> { 
+        .map(|cert| -> Result<_> { 
             let pk = privkey.private_key_to_pem_pkcs8().context(context)?;
-            let cert = Certificate::new(pk, cert);
+            let cert = Certificate::new(cert, pk);
             let cert = cert_to_response(&cert, context.clone())?;
-            Ok(cert)
-         });
-
-    let body = match serde_json::to_string(&cert) {
-        Ok(body) => body,
-        Err(err) => return Err(Error::from(err.context(context))),
-    };
-
-    let response = Response::builder()
-        .status(StatusCode::CREATED)
-        .header(CONTENT_TYPE, "application/json")
-        .header(CONTENT_LENGTH, body.len().to_string().as_str())
-        .body(body.into())
-        .context(context)?;
-
-    Ok(response)
+            let body = match serde_json::to_string(&cert) {
+                Ok(body) => body,
+                Err(err) => return Err(Error::from(err.context(context))),
+            };
+        
+            let response = Response::builder()
+                .status(StatusCode::CREATED)
+                .header(CONTENT_TYPE, "application/json")
+                .header(CONTENT_LENGTH, body.len().to_string().as_str())
+                .body(body.into())
+                .context(context)?;
+        
+            Ok(response)
+         })
 }
 
 
@@ -175,37 +173,36 @@ impl Certificate {
 }
 
 impl CoreCertificate for Certificate {
-    type Buffer = String;
+    type Buffer = Vec<u8>;
     type KeyBuffer = Vec<u8>;
 
-    fn pem(&self) -> Result<Self::Buffer> {
-        self.0
-            .pem()
-            .map_err(|err| Error::from(err.context(ErrorKind::Hsm)))
+    fn pem(&self) -> std::result::Result<Self::Buffer, edgelet_core::Error> {
+        Ok(self.pem)
     }
 
-    fn get_private_key(&self) -> Result<Option<CorePrivateKey<Self::KeyBuffer>>> {
-        self.0
-            .get_private_key()
-            .map(|pk| match pk {
-                Some(HsmPrivateKey::Key(HsmKeyBytes::Pem(key_buffer))) => {
-                    Some(CorePrivateKey::Key(CoreKeyBytes::Pem(key_buffer)))
-                }
-                Some(HsmPrivateKey::Ref(key_string)) => Some(CorePrivateKey::Ref(key_string)),
-                None => None,
-            })
-            .map_err(|err| Error::from(err.context(ErrorKind::Hsm)))
+    fn get_private_key(&self) -> std::result::Result<Option<CorePrivateKey<Self::KeyBuffer>>, edgelet_core::Error> {
+        Ok(Some(CorePrivateKey::Key(KeyBytes::Pem(self.private_key))))
     }
 
-    fn get_valid_to(&self) -> Result<DateTime<Utc>> {
-        self.0
-            .get_valid_to()
-            .map_err(|err| Error::from(err.context(ErrorKind::Hsm)))
+    fn get_valid_to(&self) -> std::result::Result<DateTime<Utc>, edgelet_core::Error> {
+        fn parse_openssl_time(
+            time: &openssl::asn1::Asn1TimeRef,
+        ) -> chrono::ParseResult<chrono::DateTime<chrono::Utc>> {
+            // openssl::asn1::Asn1TimeRef does not expose any way to convert the ASN1_TIME to a Rust-friendly type
+            //
+            // Its Display impl uses ASN1_TIME_print, so we convert it into a String and parse it back
+            // into a chrono::DateTime<chrono::Utc>
+            let time = time.to_string();
+            let time = chrono::NaiveDateTime::parse_from_str(&time, "%b %e %H:%M:%S %Y GMT")?;
+            Ok(chrono::DateTime::<chrono::Utc>::from_utc(time, chrono::Utc))
+        }
+        
+        let cert = openssl::x509::X509::from_pem(&self.pem).map_err(|e| edgelet_core::Error::from(edgelet_core::ErrorKind::CertificateCreate))?;
+        let not_after = parse_openssl_time(cert.not_after()).map_err(|e| edgelet_core::Error::from(edgelet_core::ErrorKind::ParseSince))?;
+        Ok(not_after)
     }
 
-    fn get_common_name(&self) -> Result<String> {
-        self.0
-            .get_common_name()
-            .map_err(|err| Error::from(err.context(ErrorKind::Hsm)))
+    fn get_common_name(&self) -> std::result::Result<String, edgelet_core::Error> {
+        unimplemented!()
     }
 }
