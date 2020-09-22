@@ -50,7 +50,6 @@ lazy_static = "1.0"
 tempfile = "3"
 tempdir = "0.3.7"
 
-edgelet-hsm = { path = "../edgelet-hsm" }
 edgelet-test-utils = { path = "../edgelet-test-utils" }
 
 [target.'cfg(windows)'.dev-dependencies]

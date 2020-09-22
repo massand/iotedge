@@ -308,14 +308,12 @@ where
 {
     type Config = S::Config;
     type Settings = S;
-    type ProvisioningResult = TestProvisioningResult;
     type ModuleRuntime = Self;
     type Error = E;
     type Future = FutureResult<Self, Self::Error>;
 
     fn make_runtime(
         settings: Self::Settings,
-        _: Self::ProvisioningResult,
     ) -> Self::Future {
         future::ok(TestRuntime {
             module: None,

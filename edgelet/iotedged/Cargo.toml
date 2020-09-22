@@ -25,19 +25,13 @@ native-tls = "0.2"
 url = "2"
 url_serde = "0.2"
 
-hsm = { path = "../hsm-rs"}
-dps = { path = "../dps" }
 docker = { path = "../docker-rs" }
 edgelet-core = { path = "../edgelet-core" }
 edgelet-docker = { path = "../edgelet-docker" }
-edgelet-hsm = { path = "../edgelet-hsm" }
 edgelet-http = { path = "../edgelet-http" }
-edgelet-http-external-provisioning = { path = "../edgelet-http-external-provisioning" }
 edgelet-http-mgmt = { path = "../edgelet-http-mgmt" }
 edgelet-http-workload = { path = "../edgelet-http-workload" }
 edgelet-utils = { path = "../edgelet-utils" }
-iothubservice = { path = "../iothubservice" }
-provisioning = { path = "../provisioning" }
 signal-future = { path = "../signal-future" }
 aziot-key-client = { path = "../../aziot/key/aziot-key-client" }
 aziot-key-common = { path = "../../aziot/key/aziot-key-common" }

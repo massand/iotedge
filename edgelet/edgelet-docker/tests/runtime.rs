@@ -36,7 +36,6 @@ use edgelet_test_utils::web::{
 };
 use edgelet_test_utils::{routes, run_tcp_server};
 use hyper::Error as HyperError;
-use provisioning::{ProvisioningResult, ReprovisioningStatus};
 
 const IMAGE_NAME: &str = "nginx:latest";
 
@@ -84,16 +83,6 @@ fn make_settings(merge_json: Option<JsonValue>) -> Settings {
         .unwrap();
 
     config.try_into().unwrap()
-}
-
-fn provisioning_result() -> ProvisioningResult {
-    ProvisioningResult::new(
-        "d1",
-        "h1",
-        None,
-        ReprovisioningStatus::DeviceDataNotUpdated,
-        None,
-    )
 }
 
 fn make_get_networks_handler(
@@ -236,7 +225,7 @@ fn image_pull_with_invalid_image_name_fails() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| {
             let auth = AuthConfig::new()
                 .with_username("u1".to_string())
@@ -337,7 +326,7 @@ fn image_pull_with_invalid_image_host_fails() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| {
             let auth = AuthConfig::new()
                 .with_username("u1".to_string())
@@ -452,7 +441,7 @@ fn image_pull_with_invalid_creds_fails() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| {
             // password is written to guarantee base64 encoding has '-' and/or '_'
             let auth = AuthConfig::new()
@@ -551,7 +540,7 @@ fn image_pull_succeeds() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| {
             let auth = AuthConfig::new()
                 .with_username("u1".to_string())
@@ -637,7 +626,7 @@ fn image_pull_with_creds_succeeds() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| {
             let auth = AuthConfig::new()
                 .with_username("u1".to_string())
@@ -700,7 +689,7 @@ fn image_remove_succeeds() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| ModuleRegistry::remove(&runtime, IMAGE_NAME));
 
     let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();
@@ -811,7 +800,7 @@ fn container_create_succeeds() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| {
             let mut env = BTreeMap::new();
             env.insert("k1".to_string(), "v1".to_string());
@@ -893,7 +882,7 @@ fn container_start_succeeds() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.start("m1"));
 
     let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();
@@ -929,7 +918,7 @@ fn container_stop_succeeds() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.stop("m1", None));
 
     let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();
@@ -966,7 +955,7 @@ fn container_stop_with_timeout_succeeds() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.stop("m1", Some(Duration::from_secs(600))));
 
     let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();
@@ -1002,7 +991,7 @@ fn container_remove_succeeds() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| ModuleRuntime::remove(&runtime, "m1"));
 
     let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();
@@ -1121,7 +1110,7 @@ fn container_list_succeeds() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.list());
 
     let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();
@@ -1202,7 +1191,7 @@ fn container_logs_succeeds() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| {
             let options = LogOptions::new()
                 .with_follow(true)
@@ -1241,7 +1230,7 @@ fn image_remove_with_white_space_name_fails() {
     })));
     let image_name = "     ";
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| ModuleRegistry::remove(&runtime, image_name))
         .then(|res| match res {
             Ok(_) => Err("Expected error but got a result.".to_string()),
@@ -1275,7 +1264,7 @@ fn create_fails_for_non_docker_type() {
     })));
     let name = "not_docker";
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| {
             let module_config = ModuleSpec::new(
                 "m1".to_string(),
@@ -1314,7 +1303,7 @@ fn start_fails_for_empty_id() {
     })));
     let name = "";
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.start(name))
         .then(|result| match result {
             Ok(_) => panic!("Expected test to fail but it didn't!"),
@@ -1346,7 +1335,7 @@ fn start_fails_for_white_space_id() {
     })));
     let name = "      ";
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.start(name))
         .then(|result| match result {
             Ok(_) => panic!("Expected test to fail but it didn't!"),
@@ -1378,7 +1367,7 @@ fn stop_fails_for_empty_id() {
     })));
     let name = "";
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.stop(name, None))
         .then(|result| match result {
             Ok(_) => panic!("Expected test to fail but it didn't!"),
@@ -1410,7 +1399,7 @@ fn stop_fails_for_white_space_id() {
     })));
     let name = "     ";
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.stop(name, None))
         .then(|result| match result {
             Ok(_) => panic!("Expected test to fail but it didn't!"),
@@ -1442,7 +1431,7 @@ fn restart_fails_for_empty_id() {
     })));
     let name = "";
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.restart(name))
         .then(|result| match result {
             Ok(_) => panic!("Expected test to fail but it didn't!"),
@@ -1474,7 +1463,7 @@ fn restart_fails_for_white_space_id() {
     })));
     let name = "      ";
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.restart(name))
         .then(|result| match result {
             Ok(_) => panic!("Expected test to fail but it didn't!"),
@@ -1506,7 +1495,7 @@ fn remove_fails_for_empty_id() {
     })));
     let name = "";
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| ModuleRuntime::remove(&runtime, name))
         .then(|result| match result {
             Ok(_) => panic!("Expected test to fail but it didn't!"),
@@ -1538,7 +1527,7 @@ fn remove_fails_for_white_space_id() {
     })));
     let name = "      ";
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| ModuleRuntime::remove(&runtime, name))
         .then(|result| match result {
             Ok(_) => panic!("Expected test to fail but it didn't!"),
@@ -1570,7 +1559,7 @@ fn get_fails_for_empty_id() {
     })));
     let name = "";
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.get(name))
         .then(|result| match result {
             Ok(_) => panic!("Expected test to fail but it didn't!"),
@@ -1602,7 +1591,7 @@ fn get_fails_for_white_space_id() {
     })));
     let name = "    ";
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.get(name))
         .then(|result| match result {
             Ok(_) => panic!("Expected test to fail but it didn't!"),
@@ -1653,7 +1642,7 @@ fn runtime_init_network_does_not_exist_create() {
     })));
 
     //act
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result());
+    let task = DockerModuleRuntime::make_runtime(settings);
 
     let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();
     runtime.spawn(server);
@@ -1735,7 +1724,7 @@ fn network_ipv6_create() {
     })));
 
     //act
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result());
+    let task = DockerModuleRuntime::make_runtime(settings);
 
     let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();
     runtime.spawn(server);
@@ -1796,7 +1785,7 @@ fn runtime_init_network_exist_do_not_create() {
     })));
 
     //act
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result());
+    let task = DockerModuleRuntime::make_runtime(settings);
 
     let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();
     runtime.spawn(server);
@@ -1857,7 +1846,7 @@ fn runtime_system_info_succeeds() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.system_info());
 
     let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();
@@ -1914,7 +1903,7 @@ fn runtime_system_info_none_returns_unkown() {
         }
     })));
 
-    let task = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+    let task = DockerModuleRuntime::make_runtime(settings)
         .and_then(|runtime| runtime.system_info());
 
     let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();

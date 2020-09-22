@@ -51,7 +51,6 @@ use serde::Serialize;
 use sha2::{Digest, Sha256};
 use url::Url;
 
-use dps::DPS_API_VERSION;
 use edgelet_core::crypto::{
     Activate, CreateCertificate, Decrypt, DerivedKeyStore, Encrypt, GetDeviceIdentityCertificate,
     GetHsmVersion, GetIssuerAlias, GetTrustBundle, KeyIdentity, KeyStore, MakeRandom,
@@ -66,25 +65,14 @@ use edgelet_core::{
     ProvisioningType, RuntimeSettings, SymmetricKeyAttestationInfo, TpmAttestationInfo,
     WorkloadConfig, X509AttestationInfo,
 };
-use edgelet_hsm::tpm::{TpmKey, TpmKeyStore};
-use edgelet_hsm::{Crypto, HsmLock, X509};
 use edgelet_http::certificate_manager::CertificateManager;
 use edgelet_http::client::{Client as HttpClient, ClientImpl};
 use edgelet_http::logging::LoggingService;
-use edgelet_http::{HyperExt, MaybeProxyClient, PemCertificate, TlsAcceptorParams, API_VERSION};
-use edgelet_http_external_provisioning::ExternalProvisioningClient;
+use edgelet_http::{HyperExt, MaybeProxyClient, PemCertificate, API_VERSION};
 use edgelet_http_mgmt::ManagementService;
 use edgelet_http_workload::WorkloadService;
 use edgelet_utils::log_failure;
 pub use error::{Error, ErrorKind, InitializeErrorReason};
-use hsm::tpm::Tpm;
-use hsm::ManageTpmKeys;
-use iothubservice::DeviceClient;
-use provisioning::provisioning::{
-    AuthType, BackupProvisioning, CredentialSource, DpsSymmetricKeyProvisioning,
-    DpsTpmProvisioning, DpsX509Provisioning, ExternalProvisioning, ManualProvisioning, Provision,
-    ProvisioningResult, ReprovisioningStatus,
-};
 
 use crate::error::ExternalProvisioningErrorReason;
 use crate::workload::WorkloadData;
@@ -290,21 +278,12 @@ where
             .context(ErrorKind::Initialize(
                 InitializeErrorReason::DpsProvisioningClient,
             ))?;
-        
-        let provisioning_result =  ProvisioningResult::new(
-                "d1",
-                "h1",
-                None,
-                ReprovisioningStatus::DeviceDataNotUpdated,
-                None,
-            );
 
         info!("Finished provisioning edge device.");
 
         let runtime = init_runtime::<M>(
             settings.clone(),
             &mut tokio_runtime,
-            provisioning_result.clone(),
         )?;
 
         // Normally iotedged will stop all modules when it shuts down. But if it crashed,
@@ -676,12 +655,6 @@ where
     )
     .with_issuer(CertificateIssuer::DeviceCa);
 
-    //TODO: Call CS using edgelet_cert_props to generate new TLS cert for API services
-    //      (when https is configured). Pass PEM into cert manager
-    let cert_manager = CertificateManager::new(crypto.clone(), edgelet_cert_props).context(
-        ErrorKind::Initialize(InitializeErrorReason::CreateCertificateManager),
-    )?;
-
     let id_mgr = identity_client::IdentityClient::new().context(
         ErrorKind::Initialize(InitializeErrorReason::ManagementService)
     )?;
@@ -689,28 +662,13 @@ where
     // Create the certificate management timer and channel
     let (restart_tx, restart_rx) = oneshot::channel();
 
-    let expiration_timer = if settings.listen().management_uri().scheme() == "https"
-        || settings.listen().workload_uri().scheme() == "https"
-    {
-        Either::A(
-            cert_manager
-                .schedule_expiration_timer(move || restart_tx.send(()))
-                .map_err(|err| {
-                    Error::from(err.context(ErrorKind::CertificateExpirationManagement))
-                }),
-        )
-    } else {
-        Either::B(future::ok(()))
-    };
-
-    let cert_manager = Arc::new(cert_manager);
+    let expiration_timer = future::ok(());
 
     let mgmt = start_management::<_, _, _, M>(
         settings,
         runtime,
         id_mgr,
         mgmt_rx,
-        cert_manager.clone(),
         mgmt_stop_and_reprovision_tx,
     );
 
@@ -718,7 +676,6 @@ where
         settings,
         runtime,
         work_rx,
-        cert_manager,
         workload_config,
         workload_ca_key_pair_handle
     );
@@ -817,7 +774,6 @@ where
 fn init_runtime<M>(
     settings: M::Settings,
     tokio_runtime: &mut tokio::runtime::Runtime,
-    provisioning_result: M::ProvisioningResult,
 ) -> Result<M::ModuleRuntime, Error>
 where
     M: MakeModuleRuntime + Send + 'static,
@@ -826,7 +782,7 @@ where
 {
     info!("Initializing the module runtime...");
     let runtime = tokio_runtime
-        .block_on(M::make_runtime(settings, provisioning_result))
+        .block_on(M::make_runtime(settings))
         .context(ErrorKind::Initialize(InitializeErrorReason::ModuleRuntime))?;
     info!("Finished initializing the module runtime.");
 
@@ -922,7 +878,6 @@ fn start_management<C, K, HC, M>(
     runtime: &M::ModuleRuntime,
     identity_client: IdentityClient,
     shutdown: Receiver<()>,
-    cert_manager: Arc<CertificateManager<C>>,
     initiate_shutdown_and_reprovision: mpsc::UnboundedSender<()>,
 ) -> impl Future<Item = (), Error = Error>
 where
@@ -949,10 +904,8 @@ where
             ))?;
             let service = LoggingService::new(label, service);
 
-            let tls_params = TlsAcceptorParams::new(&cert_manager, min_protocol_version);
-
             let run = Http::new()
-                .bind_url(url.clone(), service, Some(tls_params))
+                .bind_url(url.clone(), service)
                 .map_err(|err| {
                     err.context(ErrorKind::Initialize(
                         InitializeErrorReason::ManagementService,
@@ -970,7 +923,6 @@ fn start_workload<CE, W, M>(
     settings: &M::Settings,
     runtime: &M::ModuleRuntime,
     shutdown: Receiver<()>,
-    cert_manager: Arc<CertificateManager<CE>>,
     config: W,
     workload_ca_key_pair_handle: &aziot_key_common::KeyHandle,
 ) -> impl Future<Item = (), Error = Error>
@@ -1002,10 +954,8 @@ where
             ))?;
             let service = LoggingService::new(label, service);
 
-            let tls_params = TlsAcceptorParams::new(&cert_manager, min_protocol_version);
-
             let run = Http::new()
-                .bind_url(url.clone(), service, Some(tls_params))
+                .bind_url(url.clone(), service)
                 .map_err(|err| {
                     err.context(ErrorKind::Initialize(
                         InitializeErrorReason::WorkloadService,

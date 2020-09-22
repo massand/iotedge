@@ -329,15 +329,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cmake"
-version = "0.1.44"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e56268c17a6248366d66d4a47a3381369d068cce8409bb1716ed77ea32163bb"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "config"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -487,28 +478,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dps"
-version = "0.1.0"
-dependencies = [
- "base64 0.9.3",
- "bytes 0.4.12",
- "chrono",
- "edgelet-core",
- "edgelet-http",
- "failure",
- "futures",
- "http 0.1.21",
- "hyper 0.12.35",
- "log",
- "percent-encoding 1.0.1",
- "serde",
- "serde_derive",
- "serde_json",
- "tokio 0.1.22",
- "url 2.1.1",
-]
-
-[[package]]
 name = "dtoa"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -549,7 +518,6 @@ dependencies = [
  "config",
  "docker",
  "edgelet-core",
- "edgelet-hsm",
  "edgelet-http",
  "edgelet-test-utils",
  "edgelet-utils",
@@ -561,7 +529,6 @@ dependencies = [
  "libc",
  "log",
  "maplit",
- "provisioning",
  "serde",
  "serde_derive",
  "serde_json",
@@ -577,29 +544,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "edgelet-hsm"
-version = "0.1.0"
-dependencies = [
- "base64 0.9.3",
- "bytes 0.4.12",
- "chrono",
- "edgelet-core",
- "failure",
- "hmac",
- "hsm",
- "lazy_static",
- "sha2",
- "tempfile",
-]
-
-[[package]]
 name = "edgelet-http"
 version = "0.1.0"
 dependencies = [
  "bytes 0.4.12",
  "chrono",
  "edgelet-core",
- "edgelet-hsm",
  "edgelet-test-utils",
  "edgelet-utils",
  "failure",
@@ -638,25 +588,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "edgelet-http-external-provisioning"
-version = "0.1.0"
-dependencies = [
- "base64 0.9.3",
- "bytes 0.4.12",
- "chrono",
- "edgelet-core",
- "edgelet-http",
- "external-provisioning",
- "failure",
- "futures",
- "hyper 0.12.35",
- "log",
- "serde",
- "serde_json",
- "url 2.1.1",
-]
-
-[[package]]
 name = "edgelet-http-mgmt"
 version = "0.1.0"
 dependencies = [
@@ -673,7 +604,6 @@ dependencies = [
  "lazy_static",
  "log",
  "management",
- "provisioning",
  "serde",
  "serde_json",
  "url 2.1.1",
@@ -690,7 +620,6 @@ dependencies = [
  "cert-client",
  "chrono",
  "edgelet-core",
- "edgelet-hsm",
  "edgelet-http",
  "edgelet-http-mgmt",
  "edgelet-test-utils",
@@ -773,23 +702,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff511d5dc435d703f4971bc399647c9bc38e20cb41452e3b9feb4765419ed3f3"
 dependencies = [
  "backtrace",
-]
-
-[[package]]
-name = "external-provisioning"
-version = "0.1.0"
-dependencies = [
- "base64 0.9.3",
- "edgelet-core",
- "failure",
- "futures",
- "hyper 0.12.35",
- "serde",
- "serde_derive",
- "serde_json",
- "serde_yaml",
- "typed-headers",
- "url 1.7.2",
 ]
 
 [[package]]
@@ -1041,23 +953,6 @@ checksum = "44f3bdb08579d99d7dc761c0e266f13b5f2ab8c8c703b9fc9ef333cd8f48f55e"
 dependencies = [
  "crypto-mac",
  "digest",
-]
-
-[[package]]
-name = "hsm"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "failure",
- "hsm-sys",
-]
-
-[[package]]
-name = "hsm-sys"
-version = "0.1.0"
-dependencies = [
- "cmake",
- "num_cpus",
 ]
 
 [[package]]
@@ -1378,12 +1273,9 @@ dependencies = [
  "chrono",
  "clap",
  "docker",
- "dps",
  "edgelet-core",
  "edgelet-docker",
- "edgelet-hsm",
  "edgelet-http",
- "edgelet-http-external-provisioning",
  "edgelet-http-mgmt",
  "edgelet-http-workload",
  "edgelet-test-utils",
@@ -1391,19 +1283,16 @@ dependencies = [
  "env_logger",
  "failure",
  "futures",
- "hsm",
  "http-common",
  "hyper 0.12.35",
  "hyper-tls",
  "identity-client",
- "iothubservice",
  "lazy_static",
  "log",
  "native-tls",
  "openssl",
  "openssl-sys2",
  "openssl2",
- "provisioning",
  "rand 0.5.6",
  "serde",
  "serde_json",
@@ -1424,27 +1313,6 @@ name = "iotedged-eventlog-messages"
 version = "0.1.0"
 dependencies = [
  "winreg",
-]
-
-[[package]]
-name = "iothubservice"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap",
- "edgelet-http",
- "edgelet-utils",
- "failure",
- "futures",
- "hyper 0.12.35",
- "hyper-tls",
- "percent-encoding 1.0.1",
- "serde",
- "serde_derive",
- "serde_json",
- "tokio 0.1.22",
- "typed-headers",
- "url 2.1.1",
 ]
 
 [[package]]
@@ -2033,32 +1901,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "175c513d55719db99da20232b06cda8bab6b83ec2d04e3283edf0213c37c1a29"
 dependencies = [
  "unicode-xid",
-]
-
-[[package]]
-name = "provisioning"
-version = "0.1.0"
-dependencies = [
- "base64 0.9.3",
- "bytes 0.4.12",
- "dps",
- "edgelet-core",
- "edgelet-hsm",
- "edgelet-http",
- "edgelet-http-external-provisioning",
- "edgelet-utils",
- "external-provisioning",
- "failure",
- "futures",
- "hsm",
- "log",
- "serde",
- "serde_derive",
- "serde_json",
- "sha2",
- "tempdir",
- "tokio 0.1.22",
- "url 2.1.1",
 ]
 
 [[package]]

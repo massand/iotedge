@@ -101,7 +101,7 @@ mod tests {
     use edgelet_core::{MakeModuleRuntime, ModuleRuntimeState, ModuleStatus};
     use edgelet_http::route::Parameters;
     use edgelet_test_utils::module::{
-        TestConfig, TestModule, TestProvisioningResult, TestRuntime, TestSettings,
+        TestConfig, TestModule, TestRuntime, TestSettings,
     };
     use futures::Stream;
     use management::models::{ErrorResponse, ModuleList};
@@ -124,7 +124,6 @@ mod tests {
             TestModule::new("test-module".to_string(), config, Ok(state));
         let runtime = TestRuntime::make_runtime(
             TestSettings::new(),
-            TestProvisioningResult::new(),
         )
         .wait()
         .unwrap()
@@ -179,7 +178,6 @@ mod tests {
         // arrange
         let runtime = TestRuntime::make_runtime(
             TestSettings::new(),
-            TestProvisioningResult::new(),
         )
         .wait()
         .unwrap()
@@ -215,7 +213,6 @@ mod tests {
         let module = TestModule::new("test-module".to_string(), config, Err(Error::General));
         let runtime = TestRuntime::make_runtime(
             TestSettings::new(),
-            TestProvisioningResult::new(),
         )
         .wait()
         .unwrap()

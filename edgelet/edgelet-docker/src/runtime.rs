@@ -24,7 +24,6 @@ use edgelet_core::{
 };
 use edgelet_http::{Pid, UrlConnector};
 use edgelet_utils::{ensure_not_empty_with_context, log_failure};
-use provisioning::ProvisioningResult;
 
 use crate::client::DockerClient;
 use crate::config::DockerConfig;
@@ -188,14 +187,12 @@ where
 impl MakeModuleRuntime for DockerModuleRuntime {
     type Config = DockerConfig;
     type Settings = Settings;
-    type ProvisioningResult = ProvisioningResult;
     type ModuleRuntime = Self;
     type Error = Error;
     type Future = Box<dyn Future<Item = Self, Error = Self::Error> + Send>;
 
     fn make_runtime(
         settings: Settings,
-        _: ProvisioningResult,
     ) -> Self::Future {
         info!("Initializing module runtime...");
         let created = init_client(settings.moby_runtime().uri()).map_or_else(
@@ -1049,7 +1046,7 @@ mod tests {
         BTreeMap, Body, CoreSystemInfo, Deserializer, DockerModuleRuntime, DockerModuleTop,
         Duration, Error, ErrorKind, Future, InlineResponse200, LogOptions,
         MakeModuleRuntime, Module, ModuleId, ModuleRuntime, ModuleRuntimeState, ModuleSpec, Pid,
-        ProvisioningResult, Request, Settings, Stream, SystemResources,
+        Request, Settings, Stream, SystemResources,
     };
 
     use std::path::Path;
@@ -1064,17 +1061,6 @@ mod tests {
         Certificates, Connect, Listen, ModuleRegistry, ModuleTop, Provisioning, RuntimeSettings,
         WatchdogSettings, Endpoints,
     };
-    use provisioning::ReprovisioningStatus;
-
-    fn provisioning_result() -> ProvisioningResult {
-        ProvisioningResult::new(
-            "d1",
-            "h1",
-            None,
-            ReprovisioningStatus::DeviceDataNotUpdated,
-            None,
-        )
-    }
 
     fn make_settings(merge_json: Option<JsonValue>) -> Settings {
         let mut config = Config::default();
@@ -1126,7 +1112,7 @@ mod tests {
                 "uri": "foo:///this/is/not/valid"
             }
         })));
-        let err = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+        let err = DockerModuleRuntime::make_runtime(settings)
             .wait()
             .unwrap_err();
         assert!(failure::Fail::iter_chain(&err).any(|err| err
@@ -1142,7 +1128,7 @@ mod tests {
                 "uri": "unix:///this/file/does/not/exist"
             }
         })));
-        let err = DockerModuleRuntime::make_runtime(settings, provisioning_result())
+        let err = DockerModuleRuntime::make_runtime(settings)
             .wait()
             .unwrap_err();
         assert!(failure::Fail::iter_chain(&err)
@@ -1465,7 +1451,6 @@ mod tests {
 
     impl MakeModuleRuntime for TestModuleList {
         type Config = TestConfig;
-        type ProvisioningResult = ProvisioningResult;
         type ModuleRuntime = Self;
         type Settings = TestSettings;
         type Error = Error;
@@ -1473,7 +1458,6 @@ mod tests {
 
         fn make_runtime(
             _settings: Self::Settings,
-            _provisioning_result: Self::ProvisioningResult,
         ) -> Self::Future {
             unimplemented!()
         }

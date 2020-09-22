@@ -466,14 +466,12 @@ pub trait ProvisioningResult {
 pub trait MakeModuleRuntime {
     type Config: Clone + Send;
     type Settings: RuntimeSettings<Config = Self::Config>;
-    type ProvisioningResult: ProvisioningResult;
     type ModuleRuntime: ModuleRuntime<Config = Self::Config>;
     type Error: Fail;
     type Future: Future<Item = Self::ModuleRuntime, Error = Self::Error> + Send;
 
     fn make_runtime(
         settings: Self::Settings,
-        provisioning_result: Self::ProvisioningResult,
     ) -> Self::Future;
 }
 
