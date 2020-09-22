@@ -40,6 +40,7 @@ iothubservice = { path = "../iothubservice" }
 provisioning = { path = "../provisioning" }
 signal-future = { path = "../signal-future" }
 aziot-key-client = { path = "../../aziot/key/aziot-key-client" }
+aziot-key-common = { path = "../../aziot/key/aziot-key-common" }
 aziot-key-openssl-engine = { path = "../../aziot/key/aziot-key-openssl-engine" }
 cert-client = { path = "../cert-client" }
 identity-client = { path = "../identity-client" }

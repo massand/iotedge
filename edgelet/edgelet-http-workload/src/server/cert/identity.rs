@@ -21,11 +21,13 @@ use crate::IntoResponse;
 pub struct IdentityCertHandler<W: WorkloadConfig> {
     cert_client: Arc<Mutex<CertificateClient>>,
     config: W,
+    workload_ca_key_pair_handle: aziot_key_common::KeyHandle,
 }
 
 impl<W: WorkloadConfig> IdentityCertHandler<W> {
-    pub fn new(cert_client: CertificateClient, config: W) -> Self {
-        IdentityCertHandler { cert_client: Arc::new(Mutex::new(cert_client)), config }
+        
+        pub fn new(cert_client: CertificateClient, config: W, workload_ca_key_pair_handle: aziot_key_common::KeyHandle) -> Self {
+        IdentityCertHandler { cert_client: Arc::new(Mutex::new(cert_client)), config, workload_ca_key_pair_handle }
     }
 }
 
@@ -40,6 +42,7 @@ where
     ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
         let hsm = self.cert_client.clone();
         let cfg = self.config.clone();
+        let workload_ca_key_pair_handle = self.workload_ca_key_pair_handle.clone();
         let max_duration = cfg.get_cert_max_duration(CertificateType::Client);
 
         let response = params
@@ -91,6 +94,7 @@ where
                     &hsm,
                     alias,
                     &props,
+                    &workload_ca_key_pair_handle,
                     ErrorKind::CertOperation(CertOperation::CreateIdentityCert),
                 )
             })

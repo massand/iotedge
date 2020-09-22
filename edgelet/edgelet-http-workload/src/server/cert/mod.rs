@@ -11,6 +11,7 @@ use hyper::{Body, Response, StatusCode};
 
 use cert_client::client::CertificateClient;
 use edgelet_core::{Certificate as CoreCertificate, CertificateProperties, KeyBytes, PrivateKey as CorePrivateKey};
+use edgelet_core::crypto::IOTEDGED_CA_ALIAS;
 use edgelet_utils::ensure_not_empty_with_context;
 use workload::models::{CertificateResponse, PrivateKey as PrivateKeyResponse};
 
@@ -69,6 +70,7 @@ fn refresh_cert(
     cert_client: &Arc<Mutex<CertificateClient>>,
     alias: String,
     props: &CertificateProperties,
+    workload_ca_key_pair_handle: &aziot_key_common::KeyHandle,
     context: ErrorKind,
 ) -> Result<Response<Body>> {
     // if let Err(err) = hsm.destroy_certificate(alias) {
@@ -136,7 +138,7 @@ fn refresh_cert(
     cert_client
         .lock()
         .expect("certificate client lock error")
-        .create_cert(&alias, &csr, None)
+        .create_cert(&alias, &csr, Some((IOTEDGED_CA_ALIAS, workload_ca_key_pair_handle)))
         .map_err(|err| Err(Error::from(err.context(context))))
         .map(|cert| -> Result<_> { 
             let pk = privkey.private_key_to_pem_pkcs8().context(context)?;

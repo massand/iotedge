@@ -1371,6 +1371,7 @@ name = "iotedged"
 version = "0.1.0"
 dependencies = [
  "aziot-key-client",
+ "aziot-key-common",
  "aziot-key-openssl-engine",
  "base64 0.9.3",
  "cert-client",

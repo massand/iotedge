@@ -419,7 +419,7 @@ where
         // }
 
         let workload_ca_key_pair_handle =
-            key_client.create_key_pair_if_not_exists("iotedged-workload-ca", Some("ec-p256:rsa-4096:*")).map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
+            key_client.create_key_pair_if_not_exists(IOTEDGED_CA_ALIAS, Some("ec-p256:rsa-4096:*")).map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
         let (workload_ca_public_key, workload_ca_private_key) = {
             let workload_ca_key_pair_handle = std::ffi::CString::new(workload_ca_key_pair_handle.0.clone()).unwrap();
             let workload_ca_public_key = key_engine.load_public_key(&workload_ca_key_pair_handle).unwrap();
@@ -428,13 +428,13 @@ where
         };
 
         //TODO: Check for existing cert
-        // let workload_ca_cert = cert_client.get_cert("iotedged-workload-ca").map_err(|_| Error::from(ErrorKind::ReprovisionFailure));
+        // let workload_ca_cert = cert_client.get_cert(IOTEDGED_CA_ALIAS).map_err(|_| Error::from(ErrorKind::ReprovisionFailure));
         let workload_ca_cert = {
             let csr =
-                create_csr("iotedged-workload-ca", &workload_ca_public_key, &workload_ca_private_key)
+                create_csr(IOTEDGED_CA_ALIAS, &workload_ca_public_key, &workload_ca_private_key)
                 .map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
             let workload_ca_cert =
-                cert_client.create_cert("iotedged-workload-ca", &csr, None)
+                cert_client.create_cert(IOTEDGED_CA_ALIAS, &csr, None)
                 .map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
             workload_ca_cert
         };
@@ -456,13 +456,13 @@ where
         // if regenerate_workload_ca_cert {
         //     println!("Generating new workload CA cert...");
     
-        //     cert_client.delete_cert("iotedged-workload-ca").await.map_err(|err| Error::CreateOrLoadWorkloadCaCert(Box::new(err)))?;
+        //     cert_client.delete_cert(IOTEDGED_CA_ALIAS).await.map_err(|err| Error::CreateOrLoadWorkloadCaCert(Box::new(err)))?;
     
         //     let csr =
-        //         create_csr("iotedged-workload-ca", &workload_ca_public_key, &workload_ca_private_key)
+        //         create_csr(IOTEDGED_CA_ALIAS, &workload_ca_public_key, &workload_ca_private_key)
         //         .map_err(|err| Error::CreateOrLoadWorkloadCaCert(Box::new(err)))?;
         //     let workload_ca_cert =
-        //         cert_client.create_cert("iotedged-workload-ca", &csr, None)
+        //         cert_client.create_cert(IOTEDGED_CA_ALIAS, &csr, None)
         //         .await.map_err(|err| Error::CreateOrLoadWorkloadCaCert(Box::new(err)))?;
         //     let workload_ca_cert = openssl::x509::X509::stack_from_pem(&*workload_ca_cert).map_err(|err| Error::CreateOrLoadWorkloadCaCert(Box::new(err)))?;
     
@@ -492,6 +492,7 @@ where
                 hyper_client.clone(),
                 &runtime,
                 cfg.clone(),
+                &workload_ca_key_pair_handle,
                 make_shutdown_signal(),
                 &mut tokio_runtime,
             )?;
@@ -638,6 +639,7 @@ fn start_api<HC, F, W, M>(
     hyper_client: HC,
     runtime: &M::ModuleRuntime,
     workload_config: W,
+    workload_ca_key_pair_handle: &aziot_key_common::KeyHandle,
     shutdown_signal: F,
     tokio_runtime: &mut tokio::runtime::Runtime,
 ) -> Result<(StartApiReturnStatus, bool), Error>
@@ -718,6 +720,7 @@ where
         work_rx,
         cert_manager,
         workload_config,
+        workload_ca_key_pair_handle
     );
 
     let (runt_tx, runt_rx) = oneshot::channel();
@@ -969,6 +972,7 @@ fn start_workload<CE, W, M>(
     shutdown: Receiver<()>,
     cert_manager: Arc<CertificateManager<CE>>,
     config: W,
+    workload_ca_key_pair_handle: &aziot_key_common::KeyHandle,
 ) -> impl Future<Item = (), Error = Error>
 where
     CE: CreateCertificate + Clone,
