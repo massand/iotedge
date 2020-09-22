@@ -126,6 +126,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "aziot-key-openssl-engine"
+version = "0.1.0"
+dependencies = [
+ "aziot-key-client",
+ "aziot-key-common",
+ "base64 0.12.3",
+ "foreign-types-shared",
+ "openssl",
+ "openssl-build",
+ "openssl-errors",
+ "openssl-sys",
+ "openssl-sys2",
+ "openssl2",
+]
+
+[[package]]
 name = "backtrace"
 version = "0.3.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1355,6 +1371,7 @@ name = "iotedged"
 version = "0.1.0"
 dependencies = [
  "aziot-key-client",
+ "aziot-key-openssl-engine",
  "base64 0.9.3",
  "cert-client",
  "chrono",
@@ -1382,6 +1399,9 @@ dependencies = [
  "lazy_static",
  "log",
  "native-tls",
+ "openssl",
+ "openssl-sys2",
+ "openssl2",
  "provisioning",
  "rand 0.5.6",
  "serde",
@@ -1845,6 +1865,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "openssl-build"
+version = "0.1.0"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "openssl-errors"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "896a63b50d065ba042e1ca4db8b0f85c0ce2c84ce64d666429bb96a1f503286d"
+dependencies = [
+ "libc",
+ "openssl-sys",
+]
+
+[[package]]
 name = "openssl-probe"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1861,6 +1898,26 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
+]
+
+[[package]]
+name = "openssl-sys2"
+version = "0.1.0"
+dependencies = [
+ "openssl-build",
+ "openssl-sys",
+]
+
+[[package]]
+name = "openssl2"
+version = "0.1.0"
+dependencies = [
+ "foreign-types",
+ "foreign-types-shared",
+ "openssl",
+ "openssl-build",
+ "openssl-sys",
+ "openssl-sys2",
 ]
 
 [[package]]
