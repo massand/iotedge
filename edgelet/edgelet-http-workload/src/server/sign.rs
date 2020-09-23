@@ -70,24 +70,27 @@ impl Handler<Parameters> for SignHandler
             .into_future()
             .flatten()
             .and_then(|(id, request)| -> Result<_, Error> {
-                let fut = get_key_handle(id_mgr.clone(), &id);
                 let data: Vec<u8> = base64::decode(request.data()).context(ErrorKind::MalformedRequestBody)?;
-                let sig = fut.and_then(|k| { get_signature(self.key_store.clone(), k, data) } )
-                .and_then(|signature| -> Result<_, Error> {
-                    let encoded = base64::encode(signature.as_bytes());
-                    let response = SignResponse::new(encoded);
-                    let body = serde_json::to_string(&response)
-                        .context(ErrorKind::EncryptionOperation(EncryptionOperation::Sign))?;
-                    let response = Response::builder()
-                        .status(StatusCode::OK)
-                        .header(CONTENT_TYPE, "application/json")
-                        .header(CONTENT_LENGTH, body.len().to_string().as_str())
-                        .body(body.into())
-                        .context(ErrorKind::EncryptionOperation(EncryptionOperation::Sign))?;
-                    Ok(response)
-                });
-                sig.map(Ok)
+                let response = get_key_handle(id_mgr.clone(), &id)
+                    .and_then(|k| { 
+                        get_signature(key_store, k, data) 
+                    })
+                    .and_then(|signature| -> Result<_, Error> {
+                        let encoded = base64::encode(signature.as_bytes());
+                        let response = SignResponse::new(encoded);
+                        let body = serde_json::to_string(&response)
+                            .context(ErrorKind::EncryptionOperation(EncryptionOperation::Sign))?;
+                        let response = Response::builder()
+                            .status(StatusCode::OK)
+                            .header(CONTENT_TYPE, "application/json")
+                            .header(CONTENT_LENGTH, body.len().to_string().as_str())
+                            .body(body.into())
+                            .context(ErrorKind::EncryptionOperation(EncryptionOperation::Sign))?;
+                        Ok(response)
+                    });
+                Ok(response)
             })
+            .flatten()
             .or_else(|e| Ok(e.into_response()));
 
         Box::new(response)

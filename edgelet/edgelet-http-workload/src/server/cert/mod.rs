@@ -15,7 +15,7 @@ use edgelet_core::crypto::IOTEDGED_CA_ALIAS;
 use edgelet_utils::ensure_not_empty_with_context;
 use workload::models::{CertificateResponse, PrivateKey as PrivateKeyResponse};
 
-use crate::error::{Error, ErrorKind, Result};
+use crate::{IntoResponse, error::{Error, ErrorKind, Result}};
 
 mod identity;
 mod server;
@@ -135,12 +135,12 @@ fn refresh_cert(
     let csr = csr.to_pem()
         .context(context)?;
 
-    cert_client
+    let response = cert_client
         .lock()
         .expect("certificate client lock error")
         .create_cert(&alias, &csr, Some((IOTEDGED_CA_ALIAS, workload_ca_key_pair_handle)))
-        .map_err(|err| Err(Error::from(err.context(context))))
-        .map(|cert| -> Result<_> { 
+        .map_err(|err| Error::from(err.context(context)))
+        .and_then(move |cert| -> Result<_> { 
             let pk = privkey.private_key_to_pem_pkcs8().context(context)?;
             let cert = Certificate::new(cert, pk);
             let cert = cert_to_response(&cert, context.clone())?;
@@ -158,6 +158,9 @@ fn refresh_cert(
         
             Ok(response)
          })
+         .or_else(|e| Ok(e.into_response()));
+
+    Ok(response)
 }
 
 

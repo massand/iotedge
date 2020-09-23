@@ -64,27 +64,30 @@ impl Handler<Parameters> for EncryptHandler
             .into_future()
             .flatten()
             .and_then(move |(id, request)| -> Result<_, Error> {
-                let fut = get_key_handle(id_mgr, &id);
                 let plaintext =
                     base64::decode(request.plaintext()).context(ErrorKind::MalformedRequestBody)?;
                 let initialization_vector = base64::decode(request.initialization_vector())
                     .context(ErrorKind::MalformedRequestBody)?;
-                let ciphertext = fut.and_then(|k| { get_ciphertext(key_store, k, initialization_vector, plaintext)})
-                .and_then(|ciphertext| -> Result<_, Error> {
-                    let encoded = base64::encode(&ciphertext);
-                    let response = EncryptResponse::new(encoded);
-                    let body = serde_json::to_string(&response)
-                        .context(ErrorKind::EncryptionOperation(EncryptionOperation::Encrypt))?;
-                    let response = Response::builder()
-                        .status(StatusCode::OK)
-                        .header(CONTENT_TYPE, "application/json")
-                        .header(CONTENT_LENGTH, body.len().to_string().as_str())
-                        .body(body.into())
-                        .context(ErrorKind::EncryptionOperation(EncryptionOperation::Encrypt))?;
-                    Ok(response)
-                });
-                ciphertext.map(Ok)
+                let ciphertext = get_key_handle(id_mgr, &id)
+                    .and_then(|k| { 
+                        get_ciphertext(key_store, k, initialization_vector, plaintext)
+                    })
+                    .and_then(|ciphertext| -> Result<_, Error> {
+                        let encoded = base64::encode(&ciphertext);
+                        let response = EncryptResponse::new(encoded);
+                        let body = serde_json::to_string(&response)
+                            .context(ErrorKind::EncryptionOperation(EncryptionOperation::Encrypt))?;
+                        let response = Response::builder()
+                            .status(StatusCode::OK)
+                            .header(CONTENT_TYPE, "application/json")
+                            .header(CONTENT_LENGTH, body.len().to_string().as_str())
+                            .body(body.into())
+                            .context(ErrorKind::EncryptionOperation(EncryptionOperation::Encrypt))?;
+                        Ok(response)
+                    });
+                Ok(ciphertext)
             })
+            .flatten()
             .or_else(|e| Ok(e.into_response()));
 
         Box::new(response)

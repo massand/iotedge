@@ -41,16 +41,16 @@ impl Handler<Parameters> for DeleteIdentity
             .map(move |name| {
                 let name = name.to_string();
 
-            id_mgr
-                .lock()
-                .unwrap()
-                .delete_module("2020-09-01", name.as_ref())
-                .then(|result| match result {
-                    Ok(_) => Ok(name),
-                    Err(_) => Err(Error::from(ErrorKind::IdentityOperation(
-                        IdentityOperation::DeleteIdentity(name),
-                    ))),
-                })
+                id_mgr
+                    .lock()
+                    .unwrap()
+                    .delete_module("2020-09-01", name.as_ref())
+                    .then(|result| match result {
+                        Ok(_) => Ok(name),
+                        Err(_) => Err(Error::from(ErrorKind::IdentityOperation(
+                            IdentityOperation::DeleteIdentity(name),
+                        ))),
+                    })
             })
             .into_future()
             .flatten()
