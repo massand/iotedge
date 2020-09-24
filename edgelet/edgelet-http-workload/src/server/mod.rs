@@ -106,8 +106,8 @@ fn get_key_handle(identity_client: Arc<Mutex<IdentityClient>>, name: &str) -> im
     .and_then(|identity| {
         match identity {
             aziot_identity_common::Identity::Aziot(spec) => {
-                spec.auth.map(|authInfo| {
-                    Ok(authInfo.key_handle)
+                spec.auth.map(|authinfo| {
+                    Ok(authinfo.key_handle)
                 }).expect("keyhandle missing")
             }
         }   

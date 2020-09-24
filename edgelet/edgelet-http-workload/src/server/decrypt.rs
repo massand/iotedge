@@ -72,7 +72,7 @@ impl Handler<Parameters> for DecryptHandler
                     .and_then(|k| { 
                         get_plaintext(key_store, k, initialization_vector, plaintext)
                     })
-                    .and_then(|ciphertext| -> Result<_, Error> {
+                    .and_then(|plaintext| -> Result<_, Error> {
                         let encoded = base64::encode(&plaintext);
                         let response = DecryptResponse::new(encoded);
                         let body = serde_json::to_string(&response)

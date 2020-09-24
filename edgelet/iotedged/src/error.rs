@@ -9,7 +9,6 @@ use edgelet_core::Error as CoreError;
 use edgelet_core::ErrorKind as CoreErrorKind;
 use edgelet_http::Error as HttpError;
 use edgelet_http::ErrorKind as HttpErrorKind;
-use iothubservice::Error as HubServiceError;
 
 use failure::{Backtrace, Context, Fail};
 #[cfg(windows)]
@@ -91,33 +90,6 @@ impl From<CoreError> for Error {
     fn from(error: CoreError) -> Self {
         let fail: &dyn Fail = &error;
         let mut error_kind = ErrorKind::Watchdog;
-
-        for cause in fail.iter_causes() {
-            if let Some(service_err) = cause.downcast_ref::<HubServiceError>() {
-                let hub_failure: &dyn Fail = service_err;
-
-                for cause in hub_failure.iter_causes() {
-                    if let Some(err) = cause.downcast_ref::<HttpError>() {
-                        match HttpError::kind(err) {
-                            HttpErrorKind::Http => {
-                                error_kind =
-                                    ErrorKind::Initialize(InitializeErrorReason::InvalidHubConfig);
-                            }
-                            HttpErrorKind::HttpWithErrorResponse(code, _message) => {
-                                if code.as_u16() == 401 {
-                                    error_kind = ErrorKind::InvalidSignedToken;
-                                }
-                            }
-                            _ => {}
-                        };
-
-                        break;
-                    }
-                }
-
-                break;
-            }
-        }
 
         let error_kind_result = match error.kind() {
             CoreErrorKind::EdgeRuntimeIdentityNotFound => {

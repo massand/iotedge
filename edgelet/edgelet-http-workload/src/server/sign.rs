@@ -42,34 +42,32 @@ impl Handler<Parameters> for SignHandler
         req: Request<Body>,
         params: Parameters,
     ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
-        let key_store = self.key_store.clone();
-        let id_mgr = self.identity_client.clone();
-
+        
         let response = params
-            .name("name")
-            .ok_or_else(|| Error::from(ErrorKind::MissingRequiredParameter("name")))
-            .and_then(|name| {
-                let genid = params
-                    .name("genid")
-                    .ok_or_else(|| Error::from(ErrorKind::MissingRequiredParameter("genid")))?;
-                Ok((name, genid))
-            })
-            .map(|(name, genid)| {
-                let id = name.to_string();
-                let genid = genid.to_string();
-                let key_store = self.key_store.clone();
+        .name("name")
+        .ok_or_else(|| Error::from(ErrorKind::MissingRequiredParameter("name")))
+        .and_then(|name| {
+            let genid = params
+            .name("genid")
+            .ok_or_else(|| Error::from(ErrorKind::MissingRequiredParameter("genid")))?;
+            Ok((name, genid))
+        })
+        .map(|(name, _)| {
+            let id = name.to_string();
+            let key_store = self.key_store.clone();
+            let id_mgr = self.identity_client.clone();
 
                 req.into_body().concat2().then(|body| {
                     let body =
                         body.context(ErrorKind::EncryptionOperation(EncryptionOperation::Encrypt))?;
                     let request: SignRequest =
                         serde_json::from_slice(&body).context(ErrorKind::MalformedRequestBody)?;
-                    Ok((id, request))
+                    Ok((id, request, key_store, id_mgr))
                 })
             })
             .into_future()
             .flatten()
-            .and_then(|(id, request)| -> Result<_, Error> {
+            .and_then(|(id, request, key_store, id_mgr)| -> Result<_, Error> {
                 let data: Vec<u8> = base64::decode(request.data()).context(ErrorKind::MalformedRequestBody)?;
                 let response = get_key_handle(id_mgr.clone(), &id)
                     .and_then(|k| { 

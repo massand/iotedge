@@ -30,6 +30,7 @@ pub mod unix;
 pub mod windows;
 
 use futures::sync::mpsc;
+use identity_client::IdentityClient;
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
@@ -222,7 +223,7 @@ where
 
 impl<M> Main<M>
 where
-    M: MakeModuleRuntime<ProvisioningResult = ProvisioningResult> + Send + 'static,
+    M: MakeModuleRuntime + Send + 'static,
     M::ModuleRuntime: 'static + Authenticator<Request = Request<Body>> + Clone + Send + Sync,
     <<M::ModuleRuntime as ModuleRuntime>::Module as Module>::Config:
         Clone + DeserializeOwned + Serialize,
@@ -262,10 +263,11 @@ where
         let url = settings.endpoints().aziot_identityd_uri().clone();
         let client = identity_client::IdentityClient::new().map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
 
-        let _device = client.get_device("api_version")
-        .and_then(move |identity| {
-            debug!("{:?}", identity);
-            Ok(())
+        let device = get_device_info(Arc::new(Mutex::new(client)))
+        .map_err(|e| Error::from(e.context(ErrorKind::Initialize(InitializeErrorReason::DpsProvisioningClient))))
+        .map(|(hub_name, device_id)| {
+            debug!("{}:{}", hub_name, device_id);
+            Ok((hub_name, device_id))
         });
 
         // let device_id = "device-id-iotedged-test";
@@ -274,7 +276,7 @@ where
         //     key_client.create_key_pair_if_not_exists(device_id, Some("ec-p256:rsa-2048:*")).unwrap();
 
         tokio_runtime
-            .block_on(_device)
+            .block_on(device)
             .context(ErrorKind::Initialize(
                 InitializeErrorReason::DpsProvisioningClient,
             ))?;
@@ -468,7 +470,6 @@ where
         loop {
             let (code, should_reprovision) = start_api::<_, _, _, M>(
                 &settings,
-                hyper_client.clone(),
                 &runtime,
                 cfg.clone(),
                 &workload_ca_key_pair_handle,
@@ -509,6 +510,21 @@ where
         info!("Shutdown complete.");
         Ok(())
     }
+}
+
+fn get_device_info(identity_client: Arc<Mutex<IdentityClient>>) -> impl Future<Item = (String, String), Error = Error> {
+    let id_mgr = identity_client.lock().unwrap();
+    id_mgr.get_device("2020-09-01")
+    .map_err(|_| Error::from(ErrorKind::Initialize(
+        InitializeErrorReason::DpsProvisioningClient,
+    )))
+    .and_then(|identity| {
+        match identity {
+            aziot_identity_common::Identity::Aziot(spec) => {
+                Ok((spec.hub_name, spec.device_id.0))
+            }
+        }   
+    })
 }
 
 fn cert_public_key_matches_private_key(

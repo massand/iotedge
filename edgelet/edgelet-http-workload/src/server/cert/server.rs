@@ -103,15 +103,20 @@ where
                     alias.clone(),
                 )
                 .with_san_entries(sans);
+                Ok((alias, props))
+            })
+            .and_then(|(alias, props)| { 
                 let body = refresh_cert(
-                    &hsm,
+                    hsm,
                     alias,
                     &props,
-                    &workload_ca_key_pair_handle,
+                    workload_ca_key_pair_handle,
                     ErrorKind::CertOperation(CertOperation::GetServerCert),
-                )?;
+                )
+                .map_err(|_| Error::from(ErrorKind::CertOperation(CertOperation::GetServerCert)));
                 Ok(body)
             })
+            .flatten()
             .or_else(|e| future::ok(e.into_response()));
 
         Box::new(response)
