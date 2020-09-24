@@ -963,7 +963,7 @@ where
     let key_url = settings.endpoints().aziot_keyd_uri().clone();
     let key_connector = http_common::Connector::new(&key_url).map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
 
-    WorkloadService::new(runtime, key_connector, config)
+    WorkloadService::new(runtime, identity_client, cert_client, key_connector, config, workload_ca_key_pair_handle)
         .then(move |service| -> Result<_, Error> {
             let service = service.context(ErrorKind::Initialize(
                 InitializeErrorReason::WorkloadService,
