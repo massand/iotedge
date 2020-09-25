@@ -74,14 +74,6 @@ fn refresh_cert(
     workload_ca_key_pair_handle: aziot_key_common::KeyHandle,
     context: ErrorKind,
 ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
-    // if let Err(err) = hsm.destroy_certificate(alias) {
-    //     return Err(Error::from(err.context(context)));
-    // };
-
-    // let cert = match hsm.create_certificate(props) {
-    //     Ok(cert) => cert,
-    //     Err(err) => return Err(Error::from(err.context(context))),
-    // };
     let response = generate_key_and_csr(props, context.clone())
     .into_future()
     .and_then(move |(privkey, csr)| -> Result<_> {

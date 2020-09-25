@@ -10,7 +10,6 @@ use aziot_key_common::EncryptMechanism;
 use aziot_key_common::KeyHandle;
 use edgelet_http::route::{Handler, Parameters};
 use edgelet_http::Error as HttpError;
-use http_common::Connector;
 use identity_client::client::IdentityClient;
 use workload::models::{EncryptRequest, EncryptResponse};
 
@@ -20,15 +19,14 @@ use crate::error::{EncryptionOperation, Error, ErrorKind};
 use crate::IntoResponse;
 
 pub struct EncryptHandler {
-    key_store: Arc<Mutex<aziot_key_client::Client>>,
+    key_client: Arc<Mutex<aziot_key_client::Client>>,
     identity_client: Arc<Mutex<IdentityClient>>,
 }
 
 impl EncryptHandler {
-    pub fn new(key_connector: Connector, identity_client: IdentityClient) -> Self {
-        let key_store = Arc::new(Mutex::new(aziot_key_client::Client::new(key_connector)));
+    pub fn new(key_client: Arc<Mutex<aziot_key_client::Client>>, identity_client: Arc<Mutex<IdentityClient>>) -> Self {
         
-        EncryptHandler { key_store, identity_client: Arc::new(Mutex::new(identity_client)) }
+        EncryptHandler { key_client, identity_client }
     }
 }
 
@@ -39,7 +37,7 @@ impl Handler<Parameters> for EncryptHandler
         req: Request<Body>,
         params: Parameters,
     ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
-        let key_store = self.key_store.clone();
+        let key_store = self.key_client.clone();
         let id_mgr = self.identity_client.clone();
 
         let response = params

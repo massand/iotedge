@@ -23,8 +23,8 @@ pub struct TrustBundleHandler
 
 impl TrustBundleHandler
 {
-    pub fn new(cert_client: CertificateClient) -> Self {
-        TrustBundleHandler { cert_client: Arc::new(Mutex::new(cert_client)) }
+    pub fn new(cert_client: Arc<Mutex<CertificateClient>>) -> Self {
+        TrustBundleHandler { cert_client }
     }
 }
 

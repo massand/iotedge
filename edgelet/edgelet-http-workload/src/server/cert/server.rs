@@ -27,8 +27,8 @@ pub struct ServerCertHandler<W: WorkloadConfig> {
 }
 
 impl<W: WorkloadConfig> ServerCertHandler<W> {
-    pub fn new(cert_client: CertificateClient, config: W, workload_ca_key_pair_handle: aziot_key_common::KeyHandle) -> Self {
-        ServerCertHandler { cert_client: Arc::new(Mutex::new(cert_client)), config, workload_ca_key_pair_handle }
+    pub fn new(cert_client: Arc<Mutex<CertificateClient>>, config: W, workload_ca_key_pair_handle: aziot_key_common::KeyHandle) -> Self {
+        ServerCertHandler { cert_client, config, workload_ca_key_pair_handle }
     }
 }
 impl<W> Handler<Parameters> for ServerCertHandler<W>

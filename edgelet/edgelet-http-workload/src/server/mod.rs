@@ -17,7 +17,6 @@ use edgelet_http::authorization::Authorization;
 use edgelet_http::route::{Builder, RegexRecognizer, Router, RouterService};
 use edgelet_http::{router, Version};
 use edgelet_http_mgmt::ListModules;
-use http_common::Connector;
 use identity_client::client::IdentityClient;
 
 use failure::{Compat, Fail, ResultExt};
@@ -42,9 +41,9 @@ pub struct WorkloadService {
 impl WorkloadService {
     pub fn new<M, W>(
         runtime: &M,
-        identity_client: IdentityClient,
-        cert_client: CertificateClient,
-        key_connector: Connector,
+        identity_client: Arc<Mutex<IdentityClient>>,
+        cert_client: Arc<Mutex<CertificateClient>>,
+        key_client: Arc<Mutex<aziot_key_client::Client>>,
         config: W,
         workload_ca_key_pair_handle: &aziot_key_common::KeyHandle,
     ) -> impl Future<Item = Self, Error = Error>
@@ -58,9 +57,9 @@ impl WorkloadService {
     {
         let router = router!(
             get   Version2018_06_28 runtime Policy::Anonymous => "/modules" => ListModules::new(runtime.clone()),
-            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/sign"     => SignHandler::new(key_connector.clone(), identity_client.clone()),
-            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/decrypt"  => DecryptHandler::new(key_connector.clone(), identity_client.clone()),
-            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/encrypt"  => EncryptHandler::new(key_connector.clone(), identity_client.clone()),
+            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/sign"     => SignHandler::new(key_client.clone(), identity_client.clone()),
+            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/decrypt"  => DecryptHandler::new(key_client.clone(), identity_client.clone()),
+            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/encrypt"  => EncryptHandler::new(key_client.clone(), identity_client.clone()),
             post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/certificate/identity"            => IdentityCertHandler::new(cert_client.clone(), config.clone(), workload_ca_key_pair_handle.clone()),
             post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/certificate/server" => ServerCertHandler::new(cert_client.clone(), config, workload_ca_key_pair_handle.clone()),
 

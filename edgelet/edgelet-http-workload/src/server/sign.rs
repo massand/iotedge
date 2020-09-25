@@ -12,7 +12,6 @@ use aziot_key_common::KeyHandle;
 use edgelet_core::crypto::Signature;
 use edgelet_http::route::{Handler, Parameters};
 use edgelet_http::Error as HttpError;
-use http_common::Connector;
 use identity_client::client::IdentityClient;
 
 use super::get_key_handle;
@@ -22,16 +21,15 @@ use crate::IntoResponse;
 
 pub struct SignHandler
 {
-    key_store: Arc<Mutex<aziot_key_client::Client>>,
+    key_client: Arc<Mutex<aziot_key_client::Client>>,
     identity_client: Arc<Mutex<IdentityClient>>,
 }
 
 impl SignHandler
 {
-    pub fn new(key_connector: Connector, identity_client: IdentityClient) -> Self {
-        let key_store = Arc::new(Mutex::new(aziot_key_client::Client::new(key_connector)));
+    pub fn new(key_client: Arc<Mutex<aziot_key_client::Client>>, identity_client: Arc<Mutex<IdentityClient>>) -> Self {
         
-        SignHandler { key_store, identity_client: Arc::new(Mutex::new(identity_client)) }
+        SignHandler { key_client, identity_client }
     }
 }
 
@@ -54,7 +52,7 @@ impl Handler<Parameters> for SignHandler
         })
         .map(|(name, _)| {
             let id = name.to_string();
-            let key_store = self.key_store.clone();
+            let key_store = self.key_client.clone();
             let id_mgr = self.identity_client.clone();
 
                 req.into_body().concat2().then(|body| {

@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-use failure::{Fail, ResultExt};
+use failure::{Fail};
 use futures::future::Future;
 use futures::prelude::*;
 use hyper::client::{Client as HyperClient};
@@ -25,17 +25,17 @@ pub struct CertificateClient {
 }
 
 impl CertificateClient {
-    pub fn new() -> Result<Self, Error> {
+    pub fn new() -> Self {
         //TODO: Read IS endpoint configuration
         
-        let url = Url::parse("http://localhost:8888").map_err(|err| Error::from(ErrorKind::Uri(err)))?;
+        let url = Url::parse("http://localhost:8888").expect("Hyper client");
         let client = Client::builder()
             .build(UrlConnector::new(
-                &url).context(ErrorKind::Hyper)?);
-        Ok(CertificateClient {
+                &url).expect("Hyper client"));
+        CertificateClient {
             client,
             host: url,
-        })
+        }
     }
 
     pub fn create_cert(

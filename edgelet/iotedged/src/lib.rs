@@ -593,7 +593,7 @@ fn verify_workload_ca_cert(
 		return Ok(VerifyWorkloadCaCertResult::NotSignedByDeviceCa);
 	}
 
-	if !workload_ca_cert.verify(device_ca_public_key).map_err(Error::from(ErrorKind::ReprovisionFailure))? {
+	if !workload_ca_cert.verify(device_ca_public_key).map_err(|_|Error::from(ErrorKind::ReprovisionFailure))? {
 		return Ok(VerifyWorkloadCaCertResult::NotSignedByDeviceCa);
 	}
 
@@ -807,7 +807,6 @@ where
 
 fn start_runtime<K, HC, M>(
     runtime: M::ModuleRuntime,
-    id_man: &HubIdentityManager<DerivedKeyStore<K>, HC>,
     hostname: &str,
     device_id: &str,
     settings: &M::Settings,
@@ -960,10 +959,17 @@ where
     let url = settings.listen().workload_uri().clone();
     let min_protocol_version = settings.listen().min_tls_version();
 
-    let key_url = settings.endpoints().aziot_keyd_uri().clone();
-    let key_connector = http_common::Connector::new(&key_url).map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
+    let keyd_url = settings.endpoints().aziot_keyd_uri().clone();
+    let _certd_url = settings.endpoints().aziot_certd_uri().clone();
+    let _identityd_url = settings.endpoints().aziot_identityd_uri().clone();
 
-    WorkloadService::new(runtime, identity_client, cert_client, key_connector, config, workload_ca_key_pair_handle)
+    let key_connector = http_common::Connector::new(&keyd_url).expect("Connector");
+    let key_client = Arc::new(Mutex::new(aziot_key_client::Client::new(key_connector)));
+
+    let cert_client = Arc::new(Mutex::new(cert_client::CertificateClient::new()));
+    let identity_client = Arc::new(Mutex::new(identity_client::IdentityClient::new()));
+
+    WorkloadService::new(runtime, identity_client, cert_client, key_client, config, workload_ca_key_pair_handle)
         .then(move |service| -> Result<_, Error> {
             let service = service.context(ErrorKind::Initialize(
                 InitializeErrorReason::WorkloadService,
