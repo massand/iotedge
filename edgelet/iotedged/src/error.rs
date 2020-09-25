@@ -89,7 +89,7 @@ impl From<ErrorKind> for Error {
 impl From<CoreError> for Error {
     fn from(error: CoreError) -> Self {
         let fail: &dyn Fail = &error;
-        let mut error_kind = ErrorKind::Watchdog;
+        let error_kind = ErrorKind::Watchdog;
 
         let error_kind_result = match error.kind() {
             CoreErrorKind::EdgeRuntimeIdentityNotFound => {

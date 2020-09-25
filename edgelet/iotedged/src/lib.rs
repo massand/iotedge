@@ -46,7 +46,7 @@ use futures::sync::oneshot::{self, Receiver};
 use futures::{future, Future, Stream};
 use hyper::server::conn::Http;
 use hyper::{Body, Request, Uri};
-use log::{debug, info, Level};
+use log::{debug, error, info, Level};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
@@ -325,15 +325,6 @@ where
                 ))?;
         // }
 
-        // Generate device and workload CA certs
-        let keyd_url = settings.endpoints().aziot_keyd_uri().clone();
-
-        tokio_runtime
-            .block_on(generate_certs(keyd_url))
-            .context(ErrorKind::Initialize(
-                InitializeErrorReason::StopExistingModules
-            ))?;
-
         let cfg = WorkloadData::new(
             hub,
             settings.parent_hostname().map(String::from),
@@ -402,241 +393,6 @@ fn get_device_info(identity_client: Arc<Mutex<IdentityClient>>) -> impl Future<I
     })
 }
 
-fn generate_certs(key_url: Url) -> impl Future<Item = (), Error = Error> {
-    // let cert_url = settings.endpoints().aziot_certd_uri().clone();
-        // let key_connector = http_common::Connector::new(&key_url).map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
-
-        // let mut key_engine = {
-        //     let key_client = aziot_key_client::Client::new(key_connector.clone());
-        //     let key_client = std::sync::Arc::new(key_client);
-    
-        //     let key_engine = aziot_key_openssl_engine::load(key_client).map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
-        //     key_engine
-        // };
-
-        // let key_client = {
-        //     let key_client = aziot_key_client::Client::new(key_connector);
-    	// 	let key_client = std::sync::Arc::new(key_client);
-        //     key_client
-        // };
-        
-    //     //TODO: Pass in connector for cert client
-    //     let cert_client = cert_client::CertificateClient::new();
-
-    //     let device_ca_key_pair_handle =
-    //         key_client.create_key_pair_if_not_exists("iotedged-device-ca", Some("ec-p256:rsa-4096:*")).map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
-    //     let (device_ca_public_key, device_ca_private_key) = {
-    //         let device_ca_key_pair_handle = std::ffi::CString::new(device_ca_key_pair_handle.0.clone()).unwrap();
-    //         let device_ca_public_key = key_engine.load_public_key(&device_ca_key_pair_handle).unwrap();
-    //         let device_ca_private_key = key_engine.load_private_key(&device_ca_key_pair_handle).unwrap();
-    //         (device_ca_public_key, device_ca_private_key)
-    //     };
-        
-    //     //TODO: Check for existing cert
-    //     // let device_ca_cert = cert_client.get_cert("iotedged-device-ca").map_err(|_| Error::from(ErrorKind::ReprovisionFailure));
-    //     let device_ca_cert = {
-    //         let csr =
-    //             create_csr("iotedged-device-ca", &device_ca_public_key, &device_ca_private_key)
-    //             .map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
-    //         let device_ca_cert =
-    //             cert_client.create_cert("iotedged-device-ca", &csr, None)
-    //             .map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
-    //         device_ca_cert
-    //     };
-
-    //     //TODO: Verify and recreate iotedged-device-ca cert if needed
-    //     // let regenerate_device_ca_cert = match verify_device_ca_cert(&device_ca_cert[0], &device_ca_private_key)? {
-    //     //     VerifyDeviceCaCertResult::Ok => false,
-    
-    //     //     VerifyDeviceCaCertResult::MismatchedKeys => {
-    //     //         println!("Device CA cert does not match device CA private key.");
-    //     //         true
-    //     //     },
-    //     // };
-    //     // if regenerate_device_ca_cert {
-    //     //     println!("Generating new device CA cert...");
-    
-    //     //     cert_client.delete_cert("iotedged-device-ca").await.map_err(|err| Error::CreateOrLoadDeviceCaCert(Box::new(err)))?;
-    
-    //     //     let csr =
-    //     //         create_csr("iotedged-device-ca", &device_ca_public_key, &device_ca_private_key)
-    //     //         .map_err(|err| Error::CreateOrLoadDeviceCaCert(Box::new(err)))?;
-    //     //     let device_ca_cert =
-    //     //         cert_client.create_cert("iotedged-device-ca", &csr, None)
-    //     //         .await.map_err(|err| Error::CreateOrLoadDeviceCaCert(Box::new(err)))?;
-    //     //     let device_ca_cert = openssl::x509::X509::stack_from_pem(&device_ca_cert).map_err(|err| Error::CreateOrLoadDeviceCaCert(Box::new(err)))?;
-    
-    //     //     println!("Loaded device CA cert with parameters: {}", Displayable(&*device_ca_cert));
-    //     //     match verify_device_ca_cert(&device_ca_cert[0], &device_ca_private_key)? {
-    //     //         VerifyDeviceCaCertResult::Ok => (),
-    
-    //     //         verify_result @ VerifyDeviceCaCertResult::MismatchedKeys =>
-    //     //             panic!("new device CA cert still failed to validate: {:?}", verify_result),
-    //     //     }
-    //     // }
-
-        // let workload_ca_key_pair_handle =
-        //     key_client.create_key_pair_if_not_exists(IOTEDGED_CA_ALIAS, Some("ec-p256:rsa-4096:*")).map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
-    //     let (workload_ca_public_key, workload_ca_private_key) = {
-    //         let workload_ca_key_pair_handle = std::ffi::CString::new(workload_ca_key_pair_handle.0.clone()).unwrap();
-    //         let workload_ca_public_key = key_engine.load_public_key(&workload_ca_key_pair_handle).unwrap();
-    //         let workload_ca_private_key = key_engine.load_private_key(&workload_ca_key_pair_handle).unwrap();
-    //         (workload_ca_public_key, workload_ca_private_key)
-    //     };
-
-    //     //TODO: Check for existing cert
-    //     // let workload_ca_cert = cert_client.get_cert(IOTEDGED_CA_ALIAS).map_err(|_| Error::from(ErrorKind::ReprovisionFailure));
-    //     let workload_ca_cert = {
-    //         let csr =
-    //             create_csr(IOTEDGED_CA_ALIAS, &workload_ca_public_key, &workload_ca_private_key)
-    //             .map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
-    //         let workload_ca_cert =
-    //             cert_client.create_cert(IOTEDGED_CA_ALIAS, &csr, None)
-    //             .map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
-    //         workload_ca_cert
-    //     };
-
-    //     //TODO: Verify and recreate iotedged-workload-ca cert if needed
-    //     // let regenerate_workload_ca_cert = match verify_workload_ca_cert(&workload_ca_cert[0], &workload_ca_private_key, &device_ca_cert[0], &device_ca_public_key)? {
-    //     //     VerifyWorkloadCaCertResult::Ok => false,
-    
-    //     //     VerifyWorkloadCaCertResult::MismatchedKeys => {
-    //     //         println!("Workload CA cert does not match workload CA private key.");
-    //     //         true
-    //     //     },
-    
-    //     //     VerifyWorkloadCaCertResult::NotSignedByDeviceCa => {
-    //     //         println!("Workload CA cert is not signed by device CA cert.");
-    //     //         true
-    //     //     },
-    //     // };
-    //     // if regenerate_workload_ca_cert {
-    //     //     println!("Generating new workload CA cert...");
-    
-    //     //     cert_client.delete_cert(IOTEDGED_CA_ALIAS).await.map_err(|err| Error::CreateOrLoadWorkloadCaCert(Box::new(err)))?;
-    
-    //     //     let csr =
-    //     //         create_csr(IOTEDGED_CA_ALIAS, &workload_ca_public_key, &workload_ca_private_key)
-    //     //         .map_err(|err| Error::CreateOrLoadWorkloadCaCert(Box::new(err)))?;
-    //     //     let workload_ca_cert =
-    //     //         cert_client.create_cert(IOTEDGED_CA_ALIAS, &csr, None)
-    //     //         .await.map_err(|err| Error::CreateOrLoadWorkloadCaCert(Box::new(err)))?;
-    //     //     let workload_ca_cert = openssl::x509::X509::stack_from_pem(&*workload_ca_cert).map_err(|err| Error::CreateOrLoadWorkloadCaCert(Box::new(err)))?;
-    
-    //     //     println!("Loaded workload CA cert with parameters: {}", Displayable(&*workload_ca_cert));
-    //     //     match verify_workload_ca_cert(&workload_ca_cert[0], &workload_ca_private_key, &device_ca_cert[0], &device_ca_public_key)? {
-    //     //         VerifyWorkloadCaCertResult::Ok => (),
-    
-    //     //         verify_result => {
-    //     //             // TODO: Handle properly
-    //     //             panic!("new workload CA cert still failed to validate: {:?}", verify_result);
-    //     //         },
-    //     //     }
-    //     // }
-
-    future::ok(())
-}
-
-fn cert_public_key_matches_private_key(
-	cert: &openssl::x509::X509Ref,
-	private_key: &openssl::pkey::PKeyRef<openssl::pkey::Private>,
-) -> bool {
-	unsafe {
-		openssl2::openssl_returns_1(openssl_sys2::X509_check_private_key(
-			foreign_types_shared::ForeignTypeRef::as_ptr(cert),
-			foreign_types_shared::ForeignTypeRef::as_ptr(private_key),
-		)).is_ok()
-	}
-}
-
-fn create_csr(
-	subject: &str,
-	public_key: &openssl::pkey::PKeyRef<openssl::pkey::Public>,
-	private_key: &openssl::pkey::PKeyRef<openssl::pkey::Private>,
-) -> Result<Vec<u8>, openssl::error::ErrorStack> {
-	let mut csr = openssl::x509::X509Req::builder()?;
-
-	csr.set_version(0)?;
-
-	let mut subject_name = openssl::x509::X509Name::builder()?;
-	subject_name.append_entry_by_text("CN", subject)?;
-	let subject_name = subject_name.build();
-	csr.set_subject_name(&subject_name)?;
-
-	csr.set_pubkey(public_key)?;
-
-	csr.sign(private_key, openssl::hash::MessageDigest::sha256())?;
-
-	let csr = csr.build();
-	let csr = csr.to_pem()?;
-	Ok(csr)
-}
-
-fn verify_device_ca_cert(
-	device_ca_cert: &openssl::x509::X509Ref,
-	device_ca_private_key: &openssl::pkey::PKeyRef<openssl::pkey::Private>,
-) -> Result<VerifyDeviceCaCertResult, Error> {
-	if !cert_public_key_matches_private_key(device_ca_cert, device_ca_private_key) {
-		return Ok(VerifyDeviceCaCertResult::MismatchedKeys);
-	}
-
-	Ok(VerifyDeviceCaCertResult::Ok)
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum VerifyDeviceCaCertResult {
-	Ok,
-	MismatchedKeys,
-}
-
-fn verify_workload_ca_cert(
-	workload_ca_cert: &openssl::x509::X509Ref,
-	workload_ca_private_key: &openssl::pkey::PKeyRef<openssl::pkey::Private>,
-	device_ca_cert: &openssl::x509::X509Ref,
-	device_ca_public_key: &openssl::pkey::PKeyRef<openssl::pkey::Public>,
-) -> Result<VerifyWorkloadCaCertResult, Error> {
-	if !cert_public_key_matches_private_key(workload_ca_cert, workload_ca_private_key) {
-		return Ok(VerifyWorkloadCaCertResult::MismatchedKeys);
-	}
-
-	if workload_ca_cert.signature().as_slice().is_empty() {
-		return Ok(VerifyWorkloadCaCertResult::NotSignedByDeviceCa);
-	}
-
-	if !workload_ca_cert.verify(device_ca_public_key).map_err(|_|Error::from(ErrorKind::ReprovisionFailure))? {
-		return Ok(VerifyWorkloadCaCertResult::NotSignedByDeviceCa);
-	}
-
-	let issued_result = device_ca_cert.issued(workload_ca_cert);
-	if issued_result != openssl::x509::X509VerifyResult::OK {
-		return Ok(VerifyWorkloadCaCertResult::NotSignedByDeviceCa);
-	}
-
-	Ok(VerifyWorkloadCaCertResult::Ok)
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum VerifyWorkloadCaCertResult {
-	Ok,
-	MismatchedKeys,
-	NotSignedByDeviceCa,
-}
-
-#[derive(Debug, Fail)]
-#[fail(display = "Could not load settings")]
-pub struct DiffError(#[cause] Context<Box<dyn std::fmt::Display + Send + Sync>>);
-
-impl From<std::io::Error> for DiffError {
-    fn from(err: std::io::Error) -> Self {
-        DiffError(Context::new(Box::new(err)))
-    }
-}
-
-impl From<serde_json::Error> for DiffError {
-    fn from(err: serde_json::Error) -> Self {
-        DiffError(Context::new(Box::new(err)))
-    }
-}
 
 #[allow(clippy::too_many_arguments)]
 fn start_api<F, W, M>(
@@ -680,11 +436,6 @@ where
 
     let id_mgr = identity_client::IdentityClient::new();
 
-    // Create the certificate management timer and channel
-    // let (restart_tx, restart_rx) = oneshot::channel();
-
-    let expiration_timer = future::ok(());
-
     let mgmt = start_management::<M>(
         settings,
         runtime,
@@ -701,7 +452,7 @@ where
     );
 
     let (runt_tx, runt_rx) = oneshot::channel();
-    let edge_rt = start_runtime::<_, _, M>(
+    let edge_rt = start_runtime::<M>(
         runtime.clone(),
         &iot_hub_name,
         &device_id,
@@ -711,16 +462,13 @@ where
 
     // This mpsc sender/receiver is used for getting notifications from the mgmt service
     // indicating that the daemon should shut down and attempt to reprovision the device.
-    let mgmt_stop_and_reprovision_signaled = mgmt_stop_and_reprovision_rx
-        .then(|res| match res {
-            Ok(_) => Err(None),
-            Err(_) => Err(Some(Error::from(ErrorKind::ManagementService))),
-        })
-        .for_each(move |_x: Option<Error>| Ok(()))
-        .then(|res| match res {
-            Ok(_) | Err(None) => Ok(None),
-            Err(Some(e)) => Err(Some(e)),
-        });
+    let mgmt_stop_and_reprovision_signaled =
+        mgmt_stop_and_reprovision_rx
+            .into_future()
+            .then(|res| match res {
+                Ok((Some(()), _)) | Ok((None, _)) => Ok(()),
+                Err(((), _)) => Err(Error::from(ErrorKind::ManagementService)),
+            });
 
     let mgmt_stop_and_reprovision_signaled = if settings.provisioning().dynamic_reprovisioning() {
         futures::future::Either::B(mgmt_stop_and_reprovision_signaled)
@@ -728,26 +476,23 @@ where
         futures::future::Either::A(future::empty())
     };
 
-    let edge_rt_with_mgmt_signal = edge_rt.select2(mgmt_stop_and_reprovision_signaled).then(
-        |res: Result<
-            Either<((), _), (Option<Error>, _)>,
-            Either<(Error, _), (Option<Error>, _)>,
-        >| {
-            // A -> EdgeRt Future
-            // B -> Mgmt Stop and Reprovision Signal Future
-            match res {
-                Ok(Either::A((_x, _y))) => {
-                    Ok((StartApiReturnStatus::Shutdown, false)).into_future()
-                }
-                Ok(Either::B((_x, _y))) => {
-                    debug!("Shutdown with device reprovisioning.");
-                    Ok((StartApiReturnStatus::Shutdown, true)).into_future()
-                }
-                Err(Either::A((err, _y))) => Err(err).into_future(),
-                Err(Either::B((err, _y))) => {
-                    debug!("The mgmt shutdown and reprovision signal failed.");
-                    Err(err.unwrap()).into_future()
-                }
+    let edge_rt_with_mgmt_signal = edge_rt.select2(mgmt_stop_and_reprovision_signaled)
+        .then(|res| match res {
+            Ok(Either::A((_edge_rt_ok, _mgmt_stop_and_reprovision_signaled_future))) => {
+                info!("Edge runtime will stop because of the shutdown signal.");
+                future::ok((StartApiReturnStatus::Shutdown, false))
+            }
+            Ok(Either::B((_mgmt_stop_and_reprovision_signaled_ok, _edge_rt_future))) => {
+                info!("Edge runtime will stop because of the device reprovisioning signal.");
+                future::ok((StartApiReturnStatus::Shutdown, true))
+            }
+            Err(Either::A((edge_rt_err, _mgmt_stop_and_reprovision_signaled_future))) => {
+                error!("Edge runtime will stop because the shutdown signal raised an error.");
+                future::err(edge_rt_err)
+            },
+            Err(Either::B((mgmt_stop_and_reprovision_signaled_err, _edge_rt_future))) => {
+                error!("Edge runtime will stop because the device reprovisioning signal raised an error.");
+                future::err(mgmt_stop_and_reprovision_signaled_err)
             }
         },
     );
@@ -755,7 +500,6 @@ where
     // Wait for the watchdog to finish, and then send signal to the workload and management services.
     // This way the edgeAgent can finish shutting down all modules.
     let edge_rt_with_cleanup = edge_rt_with_mgmt_signal
-        .select2(future::empty())
         .then(move |res| {
             mgmt_tx.send(()).unwrap_or(());
             work_tx.send(()).unwrap_or(());
@@ -763,13 +507,8 @@ where
             // A -> EdgeRt + Mgmt Stop and Reprovision Signal Future
             // B -> Restart Signal Future
             match res {
-                Ok(Either::A((x, _))) => Ok((StartApiReturnStatus::Shutdown, x.1)).into_future(),
-                Ok(Either::B(_)) => Ok((StartApiReturnStatus::Restart, false)).into_future(),
-                Err(Either::A((err, _))) => Err(err).into_future(),
-                Err(Either::B(_)) => {
-                    debug!("The restart signal failed, shutting down.");
-                    Ok((StartApiReturnStatus::Shutdown, false)).into_future()
-                }
+                Ok((start_api_return_status, should_reprovision)) => future::ok((start_api_return_status, should_reprovision)),
+                Err(err) => future::err(err)
             }
         });
 
@@ -781,9 +520,9 @@ where
     tokio_runtime.spawn(shutdown);
 
     let services = mgmt
-        .join4(workload, edge_rt_with_mgmt_signal, expiration_timer)
+        .join3(workload, edge_rt_with_cleanup)
         .then(|result| match result {
-            Ok(((), (), (code, should_reprovision), ())) => Ok((code, should_reprovision)),
+            Ok(((), (), (code, should_reprovision))) => Ok((code, should_reprovision)),
             Err(err) => Err(err),
         });
     let (restart_code, should_reprovision) = tokio_runtime.block_on(services)?;
@@ -808,7 +547,7 @@ where
     Ok(runtime)
 }
 
-fn start_runtime<K, HC, M>(
+fn start_runtime<M>(
     runtime: M::ModuleRuntime,
     hostname: &str,
     device_id: &str,
@@ -816,8 +555,6 @@ fn start_runtime<K, HC, M>(
     shutdown: Receiver<()>,
 ) -> Result<impl Future<Item = (), Error = Error>, Error>
 where
-    K: 'static + Sign + Clone + Send + Sync,
-    HC: 'static + ClientImpl,
     M: MakeModuleRuntime,
     M::ModuleRuntime: Clone + 'static,
     <<M::ModuleRuntime as ModuleRuntime>::Module as Module>::Config:
