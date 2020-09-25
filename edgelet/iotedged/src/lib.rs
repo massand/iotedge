@@ -261,7 +261,7 @@ where
         
         //TODO: Replace with factory method?
         let url = settings.endpoints().aziot_identityd_uri().clone();
-        let client = identity_client::IdentityClient::new().map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
+        let client = identity_client::IdentityClient::new();
 
         let device = get_device_info(Arc::new(Mutex::new(client)))
         .map_err(|e| Error::from(e.context(ErrorKind::Initialize(InitializeErrorReason::DpsProvisioningClient))))
@@ -345,7 +345,7 @@ where
         };
         
         //TODO: Pass in connector for cert client
-        let cert_client = cert_client::CertificateClient::new().map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
+        let cert_client = cert_client::CertificateClient::new();
 
         let device_ca_key_pair_handle =
             key_client.create_key_pair_if_not_exists("iotedged-device-ca", Some("ec-p256:rsa-4096:*")).map_err(|_| Error::from(ErrorKind::ReprovisionFailure))?;
@@ -671,9 +671,7 @@ where
     )
     .with_issuer(CertificateIssuer::DeviceCa);
 
-    let id_mgr = identity_client::IdentityClient::new().context(
-        ErrorKind::Initialize(InitializeErrorReason::ManagementService)
-    )?;
+    let id_mgr = identity_client::IdentityClient::new();
 
     // Create the certificate management timer and channel
     let (restart_tx, restart_rx) = oneshot::channel();
@@ -699,7 +697,6 @@ where
     let (runt_tx, runt_rx) = oneshot::channel();
     let edge_rt = start_runtime::<_, _, M>(
         runtime.clone(),
-        &id_man,
         &iot_hub_name,
         &device_id,
         &settings,
