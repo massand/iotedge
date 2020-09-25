@@ -22,13 +22,13 @@ use crate::IntoResponse;
 
 pub struct ServerCertHandler<W: WorkloadConfig> {
     cert_client: Arc<Mutex<CertificateClient>>,
+    key_client: Arc<Mutex<aziot_key_client::Client>>,
     config: W,
-    workload_ca_key_pair_handle: aziot_key_common::KeyHandle,
 }
 
 impl<W: WorkloadConfig> ServerCertHandler<W> {
-    pub fn new(cert_client: Arc<Mutex<CertificateClient>>, config: W, workload_ca_key_pair_handle: aziot_key_common::KeyHandle) -> Self {
-        ServerCertHandler { cert_client, config, workload_ca_key_pair_handle }
+    pub fn new(key_client: Arc<Mutex<aziot_key_client::Client>>, cert_client: Arc<Mutex<CertificateClient>>, config: W) -> Self {
+        ServerCertHandler { key_client, cert_client, config }
     }
 }
 impl<W> Handler<Parameters> for ServerCertHandler<W>
@@ -41,8 +41,8 @@ where
         params: Parameters,
     ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
         let hsm = self.cert_client.clone();
+        let key_client = self.key_client.clone();
         let cfg = self.config.clone();
-        let workload_ca_key_pair_handle = self.workload_ca_key_pair_handle.clone();
         let max_duration = cfg.get_cert_max_duration(CertificateType::Server);
 
         let response = params
@@ -107,10 +107,10 @@ where
             })
             .and_then(|(alias, props)| { 
                 let body = refresh_cert(
+                    key_client,
                     hsm,
                     alias,
                     &props,
-                    workload_ca_key_pair_handle,
                     ErrorKind::CertOperation(CertOperation::GetServerCert),
                 )
                 .map_err(|_| Error::from(ErrorKind::CertOperation(CertOperation::GetServerCert)));

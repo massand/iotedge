@@ -45,7 +45,6 @@ impl WorkloadService {
         cert_client: Arc<Mutex<CertificateClient>>,
         key_client: Arc<Mutex<aziot_key_client::Client>>,
         config: W,
-        workload_ca_key_pair_handle: &aziot_key_common::KeyHandle,
     ) -> impl Future<Item = Self, Error = Error>
     where
         M: ModuleRuntime + Authenticator<Request = Request<Body>> + Clone + Send + Sync + 'static,
@@ -60,8 +59,8 @@ impl WorkloadService {
             post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/sign"     => SignHandler::new(key_client.clone(), identity_client.clone()),
             post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/decrypt"  => DecryptHandler::new(key_client.clone(), identity_client.clone()),
             post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/encrypt"  => EncryptHandler::new(key_client.clone(), identity_client.clone()),
-            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/certificate/identity"            => IdentityCertHandler::new(cert_client.clone(), config.clone(), workload_ca_key_pair_handle.clone()),
-            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/certificate/server" => ServerCertHandler::new(cert_client.clone(), config, workload_ca_key_pair_handle.clone()),
+            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/certificate/identity"            => IdentityCertHandler::new(key_client.clone(), cert_client.clone(), config.clone()),
+            post  Version2018_06_28 runtime Policy::Caller =>    "/modules/(?P<name>[^/]+)/genid/(?P<genid>[^/]+)/certificate/server" => ServerCertHandler::new(key_client.clone(), cert_client.clone(), config),
 
             get   Version2018_06_28 runtime Policy::Anonymous => "/trust-bundle" => TrustBundleHandler::new(cert_client.clone()),
         );

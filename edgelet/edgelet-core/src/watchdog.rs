@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::time::{Duration, Instant};
 
 use failure::Fail;
-use futures::future::{self, Either, FutureResult};
+use futures::future::{self, Either};
 use futures::Future;
 use log::{info, warn, Level};
 use tokio::prelude::*;
@@ -13,9 +13,8 @@ use tokio::timer::Interval;
 use edgelet_utils::log_failure;
 
 use crate::error::{Error, ErrorKind};
-use crate::identity::{Identity, IdentityManager, IdentitySpec};
 use crate::module::{
-    ImagePullPolicy, Module, ModuleRegistry, ModuleRuntime, ModuleRuntimeErrorReason, ModuleSpec,
+    Module, ModuleRuntime, ModuleRuntimeErrorReason, ModuleSpec,
     ModuleStatus,
 };
 use crate::settings::RetryLimit;
@@ -24,28 +23,25 @@ use crate::settings::RetryLimit;
 const EDGE_RUNTIME_STOP_TIME: Duration = Duration::from_secs(60);
 
 /// This variable holds the generation ID associated with the Edge Agent module.
-const MODULE_GENERATIONID: &str = "IOTEDGE_MODULEGENERATIONID";
+const _MODULE_GENERATIONID: &str = "IOTEDGE_MODULEGENERATIONID";
 
 /// This is the frequency with which the watchdog checks for the status of the edge runtime module.
 const WATCHDOG_FREQUENCY_SECS: u64 = 60;
 
-pub struct Watchdog<M, I> {
+pub struct Watchdog<M> {
     runtime: M,
-    id_mgr: I,
     max_retries: RetryLimit,
 }
 
-impl<M, I> Watchdog<M, I>
+impl<M> Watchdog<M>
 where
     M: 'static + ModuleRuntime + Clone,
     for<'r> &'r <M as ModuleRuntime>::Error: Into<ModuleRuntimeErrorReason>,
     <M::Module as Module>::Config: Clone,
-    I: 'static + IdentityManager + Clone,
 {
-    pub fn new(runtime: M, id_mgr: I, max_retries: RetryLimit) -> Self {
+    pub fn new(runtime: M, max_retries: RetryLimit) -> Self {
         Watchdog {
             runtime,
-            id_mgr,
             max_retries,
         }
     }
@@ -65,11 +61,10 @@ where
         let runtime = self.runtime;
         let runtime_copy = runtime.clone();
         let name = spec.name().to_string();
-        let id_mgr = self.id_mgr;
         let module_id = module_id.to_string();
         let max_retries = self.max_retries;
 
-        let watchdog = start_watchdog(runtime, id_mgr, spec, module_id, max_retries);
+        let watchdog = start_watchdog(runtime, spec, module_id, max_retries);
 
         // Swallow any errors from shutdown_signal
         let shutdown_signal = shutdown_signal.then(|_| Ok(()));
@@ -106,9 +101,8 @@ where
 }
 
 // Start watchdog on a timer for 1 minute
-pub fn start_watchdog<M, I>(
+pub fn start_watchdog<M>(
     runtime: M,
-    id_mgr: I,
     spec: ModuleSpec<<M::Module as Module>::Config>,
     module_id: String,
     max_retries: RetryLimit,
@@ -116,7 +110,6 @@ pub fn start_watchdog<M, I>(
 where
     M: 'static + ModuleRuntime + Clone,
     <M::Module as Module>::Config: Clone,
-    I: 'static + IdentityManager + Clone,
 {
     info!(
         "Starting watchdog with {} second frequency...",
@@ -129,7 +122,6 @@ where
             info!("Checking edge runtime status");
             check_runtime(
                 runtime.clone(),
-                id_mgr.clone(),
                 spec.clone(),
                 module_id.clone(),
             )
@@ -156,16 +148,14 @@ where
 }
 
 // Check if the edge runtime module is running, and if not, start it.
-fn check_runtime<M, I>(
+fn check_runtime<M>(
     runtime: M,
-    id_mgr: I,
     spec: ModuleSpec<<M::Module as Module>::Config>,
     module_id: String,
 ) -> impl Future<Item = (), Error = Error>
 where
     M: 'static + ModuleRuntime + Clone,
     <M::Module as Module>::Config: Clone,
-    I: 'static + IdentityManager + Clone,
 {
     let module = spec.name().to_string();
     get_edge_runtime_mod(&runtime, module.clone())
@@ -194,7 +184,7 @@ where
                 Either::A(res)
             }
 
-            None => Either::B(create_and_start(runtime, &id_mgr, spec, module_id)),
+            None => Either::B(create_and_start(runtime, spec, module_id)),
         })
         .map(|_| ())
 }
@@ -214,73 +204,73 @@ where
         .map_err(|e| Error::from(e.context(ErrorKind::ModuleRuntime)))
 }
 
-// Gets and updates the identity of the module.
-fn update_identity<I>(
-    id_mgr: &mut I,
-    module_id: String,
-) -> impl Future<Item = I::Identity, Error = Error>
-where
-    I: 'static + IdentityManager + Clone,
-{
-    //TODO: delete (ignore if doesn't exist) and create edgeAgent identity
-    let mut id_mgr_copy = id_mgr.clone();
-    id_mgr
-        .get(IdentitySpec::new(module_id))
-        .map_err(|e| Error::from(e.context(ErrorKind::ModuleRuntime)))
-        .and_then(move |identity| match identity {
-            Some(module) => {
-                info!("Updating identity for module {}", module.module_id());
-                let res = id_mgr_copy
-                    .update(
-                        IdentitySpec::new(module.module_id().to_string())
-                            .with_generation_id(module.generation_id().to_string()),
-                    )
-                    .map_err(|e| Error::from(e.context(ErrorKind::IdentityManager)));
-                Either::A(res)
-            }
-            None => Either::B(
-                future::err(Error::from(ErrorKind::EdgeRuntimeIdentityNotFound))
-                    as FutureResult<I::Identity, Error>,
-            ),
-        })
-}
+// // Gets and updates the identity of the module.
+// fn update_identity<I>(
+//     id_mgr: &mut I,
+//     module_id: String,
+// ) -> impl Future<Item = I::Identity, Error = Error>
+// where
+//     I: 'static + IdentityManager + Clone,
+// {
+//     //TODO: delete (ignore if doesn't exist) and create edgeAgent identity
+//     let mut id_mgr_copy = id_mgr.clone();
+//     id_mgr
+//         .get(IdentitySpec::new(module_id))
+//         .map_err(|e| Error::from(e.context(ErrorKind::ModuleRuntime)))
+//         .and_then(move |identity| match identity {
+//             Some(module) => {
+//                 info!("Updating identity for module {}", module.module_id());
+//                 let res = id_mgr_copy
+//                     .update(
+//                         IdentitySpec::new(module.module_id().to_string())
+//                             .with_generation_id(module.generation_id().to_string()),
+//                     )
+//                     .map_err(|e| Error::from(e.context(ErrorKind::IdentityManager)));
+//                 Either::A(res)
+//             }
+//             None => Either::B(
+//                 future::err(Error::from(ErrorKind::EdgeRuntimeIdentityNotFound))
+//                     as FutureResult<I::Identity, Error>,
+//             ),
+//         })
+// }
 
 // Edge agent does not exist - pull, create and start the container
-fn create_and_start<M, I>(
-    runtime: M,
-    id_mgr: &I,
+fn create_and_start<M>(
+    _runtime: M,
     spec: ModuleSpec<<M::Module as Module>::Config>,
-    module_id: String,
+    _module_id: String,
 ) -> impl Future<Item = (), Error = Error>
 where
     M: 'static + ModuleRuntime + Clone,
     <M::Module as Module>::Config: Clone,
-    I: 'static + IdentityManager + Clone,
 {
     let module_name = spec.name().to_string();
     info!("Creating and starting edge runtime module {}", module_name);
-    let runtime_copy = runtime.clone();
+    // let runtime_copy = runtime.clone();
 
-    let mut id_mgr = id_mgr.clone();
-    update_identity(&mut id_mgr, module_id).and_then(|id| {
-        // add the generation ID for edge agent as an environment variable
-        let mut env = spec.env().clone();
-        env.insert(
-            MODULE_GENERATIONID.to_string(),
-            id.generation_id().to_string(),
-        );
-        let spec = spec.with_env(env);
+    //TODO: Get identity from IS for edgeAgent (IS will need to update auth information itself on receiving null auth)
+    // let mut id_mgr = id_mgr.clone();
+    // update_identity(&mut id_mgr, module_id).and_then(|id| {
+    //     // add the generation ID for edge agent as an environment variable
+    //     let mut env = spec.env().clone();
+    //     env.insert(
+    //         MODULE_GENERATIONID.to_string(),
+    //         id.generation_id().to_string(),
+    //     );
+    //     let spec = spec.with_env(env);
 
-        let pull_future = match spec.image_pull_policy() {
-            ImagePullPolicy::Never => Either::A(future::ok(())),
-            ImagePullPolicy::OnCreate => Either::B(runtime.registry().pull(spec.config())),
-        };
+    //     let pull_future = match spec.image_pull_policy() {
+    //         ImagePullPolicy::Never => Either::A(future::ok(())),
+    //         ImagePullPolicy::OnCreate => Either::B(runtime.registry().pull(spec.config())),
+    //     };
 
-        pull_future
-            .and_then(move |_| runtime.create(spec))
-            .and_then(move |_| runtime_copy.start(&module_name))
-            .map_err(|e| Error::from(e.context(ErrorKind::ModuleRuntime)))
-    })
+    //     pull_future
+    //         .and_then(move |_| runtime.create(spec))
+    //         .and_then(move |_| runtime_copy.start(&module_name))
+    //         .map_err(|e| Error::from(e.context(ErrorKind::ModuleRuntime)))
+    // })
+    future::ok(())
 }
 
 #[cfg(test)]
