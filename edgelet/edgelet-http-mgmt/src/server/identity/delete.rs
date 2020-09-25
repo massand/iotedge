@@ -20,9 +20,9 @@ pub struct DeleteIdentity {
 }
 
 impl DeleteIdentity {
-    pub fn new(id_manager: IdentityClient) -> Self {
+    pub fn new(id_manager: Arc<Mutex<IdentityClient>>) -> Self {
         DeleteIdentity {
-            id_manager: Arc::new(Mutex::new(id_manager)),
+            id_manager
         }
     }
 }

@@ -22,9 +22,9 @@ pub struct ListIdentities {
 }
 
 impl ListIdentities {
-    pub fn new(id_manager: IdentityClient) -> Self {
+    pub fn new(id_manager: Arc<Mutex<IdentityClient>>) -> Self {
         ListIdentities { 
-            id_manager: Arc::new(Mutex::new(id_manager)),
+            id_manager,
         }
     }
 }

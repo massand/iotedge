@@ -22,9 +22,9 @@ pub struct CreateIdentity {
 }
 
 impl CreateIdentity {
-    pub fn new(id_manager: IdentityClient) -> Self {
+    pub fn new(id_manager: Arc<Mutex<IdentityClient>>) -> Self {
         CreateIdentity {
-            id_manager: Arc::new(Mutex::new(id_manager)),
+            id_manager
         }
     }
 }

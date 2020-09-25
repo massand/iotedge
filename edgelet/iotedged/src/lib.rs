@@ -911,6 +911,7 @@ where
     let label = "mgmt".to_string();
     let url = settings.listen().management_uri().clone();
     let min_protocol_version = settings.listen().min_tls_version();
+    let identity_client = Arc::new(Mutex::new(identity_client::IdentityClient::new()));
 
     ManagementService::new(runtime, identity_client, initiate_shutdown_and_reprovision)
         .then(move |service| -> Result<_, Error> {

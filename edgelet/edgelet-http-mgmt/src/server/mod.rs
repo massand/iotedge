@@ -3,6 +3,7 @@
 use failure::{Compat, Fail, ResultExt};
 use futures::sync::mpsc::UnboundedSender;
 use futures::{future, Future};
+use std::sync::{Arc, Mutex};
 
 use hyper::service::{NewService, Service};
 use hyper::{Body, Request};
@@ -41,9 +42,9 @@ pub struct ManagementService {
 }
 
 impl ManagementService {
-    pub fn new<M, I>(
+    pub fn new<M>(
         runtime: &M,
-        identity_client: IdentityClient,
+        identity_client: Arc<Mutex<IdentityClient>>,
         initiate_shutdown_and_reprovision: UnboundedSender<()>,
     ) -> impl Future<Item = Self, Error = Error>
     where
