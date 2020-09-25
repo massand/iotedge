@@ -681,11 +681,11 @@ where
     let id_mgr = identity_client::IdentityClient::new();
 
     // Create the certificate management timer and channel
-    let (restart_tx, restart_rx) = oneshot::channel();
+    // let (restart_tx, restart_rx) = oneshot::channel();
 
     let expiration_timer = future::ok(());
 
-    let mgmt = start_management::<_, _, _, M>(
+    let mgmt = start_management::<M>(
         settings,
         runtime,
         id_mgr,
@@ -693,7 +693,7 @@ where
         mgmt_stop_and_reprovision_tx,
     );
 
-    let workload = start_workload::<_, _, M>(
+    let workload = start_workload::<_, M>(
         settings,
         runtime,
         work_rx,
@@ -755,7 +755,7 @@ where
     // Wait for the watchdog to finish, and then send signal to the workload and management services.
     // This way the edgeAgent can finish shutting down all modules.
     let edge_rt_with_cleanup = edge_rt_with_mgmt_signal
-        .select2(restart_rx)
+        .select2(future::empty())
         .then(move |res| {
             mgmt_tx.send(()).unwrap_or(());
             work_tx.send(()).unwrap_or(());
@@ -781,7 +781,7 @@ where
     tokio_runtime.spawn(shutdown);
 
     let services = mgmt
-        .join4(workload, edge_rt_with_cleanup, expiration_timer)
+        .join4(workload, edge_rt_with_mgmt_signal, expiration_timer)
         .then(|result| match result {
             Ok(((), (), (code, should_reprovision), ())) => Ok((code, should_reprovision)),
             Err(err) => Err(err),
@@ -891,7 +891,7 @@ where
     env
 }
 
-fn start_management<C, K, HC, M>(
+fn start_management<M>(
     settings: &M::Settings,
     runtime: &M::ModuleRuntime,
     identity_client: IdentityClient,
@@ -899,9 +899,6 @@ fn start_management<C, K, HC, M>(
     initiate_shutdown_and_reprovision: mpsc::UnboundedSender<()>,
 ) -> impl Future<Item = (), Error = Error>
 where
-    C: CreateCertificate + Clone,
-    K: 'static + Sign + Clone + Send + Sync,
-    HC: 'static + ClientImpl + Send + Sync,
     M: MakeModuleRuntime,
     M::ModuleRuntime: Authenticator<Request = Request<Body>> + Send + Sync + Clone + 'static,
     <<M::ModuleRuntime as Authenticator>::AuthenticateFuture as Future>::Error: Fail,
@@ -938,14 +935,13 @@ where
         .flatten()
 }
 
-fn start_workload<CE, W, M>(
+fn start_workload<W, M>(
     settings: &M::Settings,
     runtime: &M::ModuleRuntime,
     shutdown: Receiver<()>,
     config: W,
 ) -> impl Future<Item = (), Error = Error>
 where
-    CE: CreateCertificate + Clone,
     W: WorkloadConfig + Clone + Send + Sync + 'static,
     M: MakeModuleRuntime + 'static,
     M::Settings: 'static,
