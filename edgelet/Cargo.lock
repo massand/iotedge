@@ -96,6 +96,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "aziot-identity-common-http"
+version = "0.1.0"
+dependencies = [
+ "aziot-cert-common-http",
+ "aziot-identity-common",
+ "aziot-key-common",
+ "aziot-key-common-http",
+ "http-common",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "aziot-key-client"
 version = "0.1.0"
 dependencies = [
@@ -1161,6 +1174,7 @@ name = "identity-client"
 version = "0.1.0"
 dependencies = [
  "aziot-identity-common",
+ "aziot-identity-common-http",
  "edgelet-http",
  "failure",
  "futures",

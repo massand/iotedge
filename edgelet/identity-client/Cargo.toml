@@ -18,4 +18,5 @@ typed-headers = "0.1"
 url = "2"
 
 aziot-identity-common = { path = "../../aziot/identity/aziot-identity-common" }
+aziot-identity-common-http = { path = "../../aziot/identity/aziot-identity-common-http" }
 edgelet-http = { path = "../edgelet-http" }

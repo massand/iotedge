@@ -49,8 +49,8 @@ impl Handler<Parameters> for EncryptHandler
                     .ok_or_else(|| Error::from(ErrorKind::MissingRequiredParameter("genid")))?;
                 Ok((name, genid))
             })
-            .map(|(module_id, genid)| {
-                let id = format!("{}{}", module_id.to_string(), genid.to_string());
+            .map(|(module_id, _genid)| {
+                let id = module_id.to_string();
                 req.into_body().concat2().then(|body| {
                     let body =
                         body.context(ErrorKind::EncryptionOperation(EncryptionOperation::Encrypt))?;

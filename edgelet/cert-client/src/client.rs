@@ -28,7 +28,7 @@ impl CertificateClient {
     pub fn new() -> Self {
         //TODO: Read IS endpoint configuration
         
-        let url = Url::parse("http://localhost:8888").expect("Hyper client");
+        let url = Url::parse("http://localhost:8890").expect("Hyper client");
         let client = Client::builder()
             .build(UrlConnector::new(
                 &url).expect("Hyper client"));
@@ -89,12 +89,15 @@ impl CertificateClient {
     {
 		let uri = format!("{}certificates/{}", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET));
 
-		request::<_, (), _>(
+		let res = request::<_, (), aziot_cert_common_http::get_cert::Response>(
 			&self.client,
 			http::Method::GET,
 			&uri,
 			None,
-		)
+        )
+        .and_then(|res| Ok(res.pem.0))
+        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::ListModules))));
+        Box::new(res)
 	}
 
 	pub fn delete_cert(

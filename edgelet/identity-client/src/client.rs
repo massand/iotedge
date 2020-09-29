@@ -81,6 +81,22 @@ impl IdentityClient {
         )
     }
 
+    pub fn update_module(
+        &self,
+        _api_version: &str,
+        module_name: &str,
+    ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
+    {
+        let uri = format!("{}identities/modules/{}", self.host.as_str(), module_name);
+
+        request::<_, (), _>(
+            &self.client,
+            hyper::Method::PUT,
+            &uri,
+            None,
+        )
+    }
+
     pub fn delete_module(
         &self,
         _api_version: &str,
@@ -121,12 +137,17 @@ impl IdentityClient {
     {
         let uri = format!("{}identities/modules", self.host.as_str());
 
-        request::<_, (), _>(
+        let identities = request::<_, (), aziot_identity_common_http::get_module_identities::Response>(
             &self.client,
-            hyper::Method::POST,
+            hyper::Method::GET,
             &uri,
             None,
         )
+        .and_then(|identities| {
+            Ok(identities.identities)
+        });
+        
+        Box::new(identities)
     }
 }
 

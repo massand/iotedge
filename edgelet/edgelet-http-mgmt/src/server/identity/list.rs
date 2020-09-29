@@ -50,7 +50,7 @@ impl Handler<Parameters> for ListIdentities
                     identities
                         .into_iter()
                         .map(|identity| {
-                            let (module_id, generation_id, auth) = match identity {
+                            let (module_id, generation_id) = match identity {
                                 AziotIdentity::Aziot(spec) => {
                                     (spec.module_id.ok_or(ErrorKind::IotHub)
                                     .with_context(|_| {
@@ -59,23 +59,18 @@ impl Handler<Parameters> for ListIdentities
                                     spec.gen_id.ok_or(ErrorKind::IotHub)
                                     .with_context(|_| {
                                         ErrorKind::IotHub
-                                    }),
-                                    spec.auth.ok_or(ErrorKind::IotHub)
-                                    .with_context(|_| {
-                                        ErrorKind::IotHub
                                     }))
                                 }
                             };
                             
                             let module_id = module_id.expect("failed to get module_id");
                             let generation_id = generation_id.expect("failed to get generation_id");
-                            let auth = auth.expect("failed to get auth");
 
                             Identity::new(
                                 module_id.0.clone(),
                                 "iotedge".to_string(),
                                 generation_id.0,
-                                auth.auth_type.to_string(),
+                                "sas".to_string(),
                             )
                         })
                         .collect(),

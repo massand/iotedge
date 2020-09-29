@@ -3,7 +3,7 @@
 use std::sync::{Arc, Mutex};
 
 use failure::ResultExt;
-use futures::{Future, Stream}; 
+use futures::{Future, IntoFuture, Stream}; 
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Body, Request, Response, StatusCode};
 
@@ -12,39 +12,47 @@ use edgelet_core::{IdentityOperation, IdentitySpec};
 use edgelet_http::route::{Handler, Parameters};
 use edgelet_http::Error as HttpError;
 use identity_client::client::IdentityClient;
-use management::models::{Identity, IdentitySpec as CreateIdentitySpec};
+use management::models::{Identity, UpdateIdentity as UpdateIdentitySpec};
 
 use crate::error::{Error, ErrorKind};
 use crate::IntoResponse;
 
-pub struct CreateIdentity {
+pub struct UpdateIdentity {
     id_manager: Arc<Mutex<IdentityClient>>,
 }
 
-impl CreateIdentity {
+impl UpdateIdentity {
     pub fn new(id_manager: Arc<Mutex<IdentityClient>>) -> Self {
-        CreateIdentity {
+        UpdateIdentity {
             id_manager
         }
     }
 }
 
-impl Handler<Parameters> for CreateIdentity
+impl Handler<Parameters> for UpdateIdentity
 {
     fn handle(
         &self,
         req: Request<Body>,
-        _params: Parameters,
+        params: Parameters,
     ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
         let id_mgr = self.id_manager.clone();
-        let response = read_request(req)
-            .and_then(move |spec| {
+        let response = params
+            .name("name")
+            .ok_or_else(|| Error::from(ErrorKind::MissingRequiredParameter("name")))
+            .map(|name| {
+                let name = name.to_string();
+                read_request(name.clone(), req).map(|spec| (spec, name))
+            })
+            .into_future()
+            .flatten()
+            .and_then(move |(spec, _name)| {
                 let rid = id_mgr.lock().unwrap();
 
                 let module_id = spec.module_id().to_string();
                 let managed_by = spec.managed_by().unwrap_or("iotedge").to_string();
 
-                rid.create_module("2020-09-01", module_id.as_ref()).then(move |identity| -> Result<_, Error> {
+                rid.update_module("2020-09-01", module_id.as_ref()).then(move |identity| -> Result<_, Error> {
                     let identity = identity.with_context(|_| {
                         ErrorKind::IotHub
                     })?;
@@ -74,7 +82,7 @@ impl Handler<Parameters> for CreateIdentity
                     );
 
                     let b = serde_json::to_string(&identity).with_context(|_| {
-                        ErrorKind::IdentityOperation(IdentityOperation::CreateIdentity(
+                        ErrorKind::IdentityOperation(IdentityOperation::UpdateIdentity(
                             module_id.0.clone(),
                         ))
                     })?;
@@ -84,7 +92,7 @@ impl Handler<Parameters> for CreateIdentity
                         .header(CONTENT_LENGTH, b.len().to_string().as_str())
                         .body(b.into())
                         .with_context(|_| {
-                            ErrorKind::IdentityOperation(IdentityOperation::CreateIdentity(
+                            ErrorKind::IdentityOperation(IdentityOperation::UpdateIdentity(
                                 module_id.0,
                             ))
                         })?;
@@ -97,13 +105,15 @@ impl Handler<Parameters> for CreateIdentity
     }
 }
 
-fn read_request(req: Request<Body>) -> impl Future<Item = IdentitySpec, Error = Error> {
-    req.into_body().concat2().then(|b| {
+fn read_request(name: String, req: Request<Body>)
+ -> impl Future<Item = IdentitySpec, Error = Error> {
+    req.into_body().concat2().then(move |b| {
         let b = b.context(ErrorKind::MalformedRequestBody)?;
-        let create_req = serde_json::from_slice::<CreateIdentitySpec>(&b)
+        let update_req = serde_json::from_slice::<UpdateIdentitySpec>(&b)
             .context(ErrorKind::MalformedRequestBody)?;
-        let mut spec = IdentitySpec::new(create_req.module_id().to_string());
-        if let Some(m) = create_req.managed_by() {
+        let mut spec =
+            IdentitySpec::new(name).with_generation_id(update_req.generation_id().to_string());
+        if let Some(m) = update_req.managed_by() {
             spec = spec.with_managed_by(m.to_string());
         }
         Ok(spec)

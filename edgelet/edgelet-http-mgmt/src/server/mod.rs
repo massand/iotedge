@@ -27,7 +27,7 @@ mod module;
 mod system_info;
 
 use self::device_actions::ReprovisionDevice;
-use self::identity::{CreateIdentity, DeleteIdentity, ListIdentities};
+use self::identity::{CreateIdentity, DeleteIdentity, ListIdentities, UpdateIdentity};
 pub use self::module::*;
 use self::system_info::{GetSystemInfo, GetSystemResources};
 use crate::error::{Error, ErrorKind};
@@ -68,6 +68,7 @@ impl ManagementService {
 
             get     Version2018_06_28 runtime Policy::Module(&*AGENT_NAME)  => "/identities"                        => ListIdentities::new(identity_client.clone()),
             post    Version2018_06_28 runtime Policy::Module(&*AGENT_NAME)  => "/identities"                        => CreateIdentity::new(identity_client.clone()),
+            put     Version2018_06_28 runtime Policy::Module(&*AGENT_NAME)  => "/identities/(?P<name>[^/]+)"        => UpdateIdentity::new(identity_client.clone()),
             delete  Version2018_06_28 runtime Policy::Module(&*AGENT_NAME)  => "/identities/(?P<name>[^/]+)"        => DeleteIdentity::new(identity_client.clone()),
 
             get     Version2018_06_28 runtime Policy::Anonymous             => "/systeminfo"                        => GetSystemInfo::new(runtime.clone()),
