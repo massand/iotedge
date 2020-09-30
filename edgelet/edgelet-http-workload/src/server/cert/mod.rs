@@ -131,7 +131,7 @@ fn generate_key_and_csr(
     let mut csr = openssl::x509::X509Req::builder()
         .context(context.clone())?;
     
-    csr.set_version(0).context(context.clone())?;
+    csr.set_version(2).context(context.clone())?;
 
     let mut subject_name = 
         openssl::x509::X509Name::builder()
