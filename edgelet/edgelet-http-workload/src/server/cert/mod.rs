@@ -123,6 +123,10 @@ fn generate_key_and_csr(
         .context(context.clone())?;
     let privkey = openssl::pkey::PKey::from_rsa(rsa)
         .context(context.clone())?;
+    let pubkey = privkey.public_key_to_pem()
+        .context(context.clone())?;
+    let pubkey: openssl::pkey::PKey<openssl::pkey::Public> = openssl::pkey::PKey::public_key_from_pem(&pubkey)
+        .context(context.clone())?;
     
     let mut csr = openssl::x509::X509Req::builder()
         .context(context.clone())?;
@@ -136,6 +140,8 @@ fn generate_key_and_csr(
         .context(context.clone())?;
     let subject_name = subject_name.build();
     csr.set_subject_name(&subject_name).context(context.clone())?;
+
+    csr.set_pubkey(&pubkey).context(context.clone())?;
 
     let client_extension =
         openssl::x509::extension::ExtendedKeyUsage::new().server_auth().build()
