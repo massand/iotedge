@@ -55,12 +55,15 @@ impl CertificateClient {
 			}),
 		};
 
-        request(
+        let res = request::<_, aziot_cert_common_http::create_cert::Request, aziot_cert_common_http::create_cert::Response>(
             &self.client,
             hyper::Method::POST,
             &uri,
             Some(&body),
         )
+        .and_then(|res| Ok(res.pem.0))
+        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::ListModules))));
+        Box::new(res)
     }
     
     pub fn import_cert(
