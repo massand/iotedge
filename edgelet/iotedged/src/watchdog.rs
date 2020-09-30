@@ -3,7 +3,7 @@
 use std::cmp::Ordering;
 use std::time::{Duration, Instant};
 
-use failure::Fail;
+use failure::{Fail,ResultExt};
 use futures::future::{self, Either};
 use futures::Future;
 use log::{info, warn, Level};
@@ -11,13 +11,18 @@ use tokio::prelude::*;
 use tokio::timer::Interval;
 
 use edgelet_utils::log_failure;
+use edgelet_core::{
+    ImagePullPolicy, ModuleRegistry
+};
 
-use crate::{ImagePullPolicy, ModuleRegistry, error::{Error, ErrorKind}};
-use crate::module::{
+use aziot_identity_common::Identity as AziotIdentity;
+use edgelet_core::module::{
     Module, ModuleRuntime, ModuleRuntimeErrorReason, ModuleSpec,
     ModuleStatus,
 };
-use crate::settings::RetryLimit;
+use edgelet_core::settings::RetryLimit;
+
+use crate::error::{Error,ErrorKind};
 
 // Time to allow EdgeAgent to gracefully shutdown (including stopping all modules, and updating reported properties)
 const EDGE_RUNTIME_STOP_TIME: Duration = Duration::from_secs(60);
@@ -239,7 +244,7 @@ where
 fn create_and_start<M>(
     runtime: M,
     spec: ModuleSpec<<M::Module as Module>::Config>,
-    _module_id: String,
+    module_id: String,
 ) -> impl Future<Item = (), Error = Error>
 where
     M: 'static + ModuleRuntime + Clone,
@@ -249,28 +254,48 @@ where
     info!("Creating and starting edge runtime module {}", module_name);
     let runtime_copy = runtime.clone();
 
-    //TODO: Get identity from IS for edgeAgent (IS will need to update auth information itself on receiving null auth)
-    // let mut id_mgr = id_mgr.clone();
-    // update_identity(&mut id_mgr, module_id).and_then(|id| {
-        // add the generation ID for edge agent as an environment variable
-        let mut env = spec.env().clone();
-        env.insert(
-            _MODULE_GENERATIONID.to_string(),
-            "637033189517005053".to_string(),
-        );
-        let spec = spec.with_env(env);
+    let id_mgr = identity_client::IdentityClient::new();
 
-        let pull_future = match spec.image_pull_policy() {
-            ImagePullPolicy::Never => Either::A(future::ok(())),
-            ImagePullPolicy::OnCreate => Either::B(runtime.registry().pull(spec.config())),
-        };
+    let pull_future = 
+        id_mgr.create_module("2020-09-01", module_id.as_ref())
+        .then(move |identity| {
+            let identity = identity.with_context(|_| {
+                ErrorKind::IotHub
+            })?;
 
-        pull_future
-            .and_then(move |_| runtime.create(spec))
-            .and_then(move |_| runtime_copy.start(&module_name))
-            .map_err(|e| Error::from(e.context(ErrorKind::ModuleRuntime)))
-    // })
-    // future::ok(())
+            let (module_id, generation_id, auth) = match identity {
+                AziotIdentity::Aziot(spec) => {
+                    (spec.module_id.ok_or(ErrorKind::IotHub)
+                    .with_context(|_| {
+                        ErrorKind::IotHub
+                    })?,
+                    spec.gen_id.ok_or(ErrorKind::IotHub)
+                    .with_context(|_| {
+                        ErrorKind::IotHub
+                    })?,
+                    spec.auth.ok_or(ErrorKind::IotHub)
+                    .with_context(|_| {
+                        ErrorKind::IotHub
+                    })?)
+                }
+            };
+
+            let mut env = spec.env().clone();
+            env.insert(
+                _MODULE_GENERATIONID.to_string(),
+                generation_id.0.to_owned(),
+            );
+            let spec = spec.with_env(env);
+
+            match spec.image_pull_policy() {
+                ImagePullPolicy::Never => Either::A(future::ok(())),
+                ImagePullPolicy::OnCreate => Either::B(runtime.registry().pull(spec.config())),
+            };
+        });
+    pull_future
+        .and_then(move |_| runtime.create(spec))
+        .and_then(move |_| runtime_copy.start(&module_name))
+        .map_err(|e| Error::from(e.context(ErrorKind::ModuleRuntime)))
 }
 
 #[cfg(test)]

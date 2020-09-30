@@ -584,9 +584,8 @@ mod tests {
     use tempfile::tempdir;
 
     use edgelet_core::{MakeModuleRuntime, ModuleRuntimeState};
-    use edgelet_test_utils::crypto::TestHsm;
     use edgelet_test_utils::module::{
-        TestConfig, TestModule, TestProvisioningResult, TestRuntime, TestSettings,
+        TestConfig, TestModule, TestRuntime, TestSettings,
     };
 
     use super::{
@@ -804,7 +803,6 @@ mod tests {
 
         TestRuntime::make_runtime(
             TestSettings::new(),
-            TestProvisioningResult::new(),
         )
         .wait()
         .unwrap()

@@ -748,14 +748,8 @@ mod tests {
     use edgelet_test_utils::crypto::TestHsm;
     use edgelet_test_utils::module::{TestModule, TestProvisioningResult, TestRuntime};
 
-    use provisioning::provisioning::{
-        AuthType, CredentialSource, Credentials, ProvisioningResult, ReprovisioningStatus,
-        SymmetricKeyCredential, X509Credential,
-    };
-
     use super::{
-        check_settings_state, compute_settings_digest, diff_with_cached, env,
-        signal, CertificateIssuer, CertificateProperties, CreateCertificate, Decrypt, Digest, Encrypt,
+        env, signal, CertificateIssuer, CertificateProperties, CreateCertificate, Decrypt, Digest, Encrypt,
         ErrorKind, ExternalProvisioningErrorReason, Fail, File, Future, GetIssuerAlias,
         InitializeErrorReason, Main, MakeModuleRuntime, MakeRandom, MasterEncryptionKey,
         RuntimeSettings, Sha256, Uri, Write,
