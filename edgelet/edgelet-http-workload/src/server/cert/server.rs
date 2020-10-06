@@ -13,7 +13,7 @@ use edgelet_core::{
 use edgelet_http::route::{Handler, Parameters};
 use edgelet_http::Error as HttpError;
 use edgelet_utils::{
-    append_dns_san_entries, ensure_not_empty_with_context, prepare_dns_san_entries,
+    ensure_not_empty_with_context, prepare_dns_san_entries,
 };
 use workload::models::ServerCertificateRequest;
 
@@ -90,10 +90,8 @@ where
                 // an alternative DNS name; we also need to add the common_name that we are using
                 // as a DNS name since the presence of a DNS name SAN will take precedence over
                 // the common name
-                let sans = vec![append_dns_san_entries(
-                    &prepare_dns_san_entries(&[&module_id]),
-                    &[common_name],
-                )];
+                let sans = 
+                    prepare_dns_san_entries([&*module_id, &*common_name].iter().copied()).collect();
 
                 #[allow(clippy::cast_sign_loss)]
                 let props = CertificateProperties::new(

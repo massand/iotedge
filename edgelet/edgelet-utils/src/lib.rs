@@ -71,19 +71,16 @@ pub fn sanitize_dns_label(name: &str) -> String {
         .collect::<String>()
 }
 
-pub fn prepare_dns_san_entries(names: &[&str]) -> String {
+pub fn prepare_dns_san_entries<'a>(names: impl Iterator<Item = &'a str> + 'a) -> impl Iterator<Item = String> + 'a {
     names
-        .iter()
-        .filter_map(|name| {
-            let dns = sanitize_dns_label(name);
-            if dns.is_empty() {
-                None
-            } else {
-                Some(format!("DNS:{}", dns))
-            }
-        })
-        .collect::<Vec<String>>()
-        .join(", ")
+    .filter_map(|name| {
+        let dns = sanitize_dns_label(name);
+        if dns.is_empty() {
+            None
+        } else {
+            Some(format!("{}", dns))
+        }
+    })
 }
 
 pub fn append_dns_san_entries(sans: &str, names: &[&str]) -> String {
@@ -93,7 +90,7 @@ pub fn append_dns_san_entries(sans: &str, names: &[&str]) -> String {
             if name.trim().is_empty() {
                 None
             } else {
-                Some(format!("DNS:{}", name.to_lowercase()))
+                Some(format!("{}", name.to_lowercase()))
             }
         })
         .collect::<Vec<String>>()
