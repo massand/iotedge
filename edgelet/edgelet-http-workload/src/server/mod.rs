@@ -99,7 +99,7 @@ impl NewService for WorkloadService {
 //TODO: check genid matches returned module
 fn get_key_handle(identity_client: Arc<Mutex<IdentityClient>>, name: &str) -> impl Future<Item = KeyHandle, Error = Error> {
     let id_mgr = identity_client.lock().unwrap();
-    id_mgr.get_module("2020-09-01", name)
+    id_mgr.get_module(name)
     .map_err(|_| Error::from(ErrorKind::GetIdentity))
     .and_then(|identity| {
         match identity {

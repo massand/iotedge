@@ -14,30 +14,30 @@ use url::Url;
 
 #[derive(Clone)]
 pub struct IdentityClient {
+	api_version: aziot_identity_common_http::ApiVersion,
     client: HyperClient<UrlConnector, Body>,
     host: Url,
 }
 
 impl IdentityClient {
-    pub fn new() -> Self {
-        //TODO: Read IS endpoint configuration
+    pub fn new(api_version: aziot_identity_common_http::ApiVersion, url: &url::Url) -> Self {
+
         
-        let url = Url::parse("http://localhost:8901").expect("Hyper client");
         let client = Client::builder()
             .build(UrlConnector::new(
                 &url).expect("Hyper client"));
         IdentityClient {
+            api_version,
             client,
-            host: url,
+            host: url.clone(),
         }
     }
 
     pub fn get_device(
         &self,
-        _api_version: &str,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
-        let uri = format!("{}identities/device?api-version=2020-09-01", self.host.as_str());
+        let uri = format!("{}identities/device?api-version={}", self.host.as_str(), self.api_version);
         let body = serde_json::json! {{ "type": "aziot" }};
 
         request(
@@ -50,10 +50,9 @@ impl IdentityClient {
     
     pub fn reprovision_device(
         &self,
-        _api_version: &str,
     ) -> Box<dyn Future<Item = (), Error = Error> + Send> 
     {
-        let uri = format!("{}identities/device/reprovision?api-version=2020-09-01", self.host.as_str());
+        let uri = format!("{}identities/device/reprovision?api-version={}", self.host.as_str(), self.api_version);
         let body = serde_json::json! {{ "type": "aziot" }};
 
         request(
@@ -66,11 +65,10 @@ impl IdentityClient {
 
     pub fn create_module(
         &self,
-        _api_version: &str,
         module_name: &str,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
-        let uri = format!("{}identities/modules?api-version=2020-09-01", self.host.as_str());
+        let uri = format!("{}identities/modules?api-version={}", self.host.as_str(), self.api_version);
         let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
 
         request(
@@ -83,11 +81,10 @@ impl IdentityClient {
 
     pub fn update_module(
         &self,
-        _api_version: &str,
         module_name: &str,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
-        let uri = format!("{}identities/modules/{}?api-version=2020-09-01", self.host.as_str(), module_name);
+        let uri = format!("{}identities/modules/{}?api-version={}", self.host.as_str(), module_name, self.api_version);
         let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
 
         request(
@@ -100,11 +97,10 @@ impl IdentityClient {
 
     pub fn delete_module(
         &self,
-        _api_version: &str,
         module_name: &str,
     ) -> Box<dyn Future<Item = (), Error = Error> + Send> 
     {       
-        let uri = format!("{}identities/modules/{}?api-version=2020-09-01", self.host.as_str(), module_name);
+        let uri = format!("{}identities/modules/{}?api-version={}", self.host.as_str(), module_name, self.api_version);
 
         request::<_, (), _>(
             &self.client,
@@ -116,11 +112,10 @@ impl IdentityClient {
 
     pub fn get_module(
         &self,
-        _api_version: &str,
         module_name: &str,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
-        let uri = format!("{}identities/modules/{}?api-version=2020-09-01", self.host.as_str(), module_name);
+        let uri = format!("{}identities/modules/{}?api-version={}", self.host.as_str(), module_name, self.api_version);
         let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
 
         request(
@@ -133,10 +128,9 @@ impl IdentityClient {
 
     pub fn get_modules(
         &self,
-        _api_version: &str,
     ) -> Box<dyn Future<Item = Vec<aziot_identity_common::Identity>, Error = Error> + Send> 
     {
-        let uri = format!("{}identities/modules?api-version=2020-09-01", self.host.as_str());
+        let uri = format!("{}identities/modules?api-version={}", self.host.as_str(), self.api_version);
 
         let identities = request::<_, (), aziot_identity_common_http::get_module_identities::Response>(
             &self.client,

@@ -20,21 +20,22 @@ pub const PATH_SEGMENT_ENCODE_SET: &percent_encoding::AsciiSet =
 
 #[derive(Clone)]
 pub struct CertificateClient {
+	api_version: aziot_cert_common_http::ApiVersion,
     client: HyperClient<UrlConnector, Body>,
     host: Url,
 }
 
 impl CertificateClient {
-    pub fn new() -> Self {
+    pub fn new(api_version: aziot_cert_common_http::ApiVersion, url: &url::Url) -> Self {
         //TODO: Read IS endpoint configuration
         
-        let url = Url::parse("http://localhost:8890").expect("Hyper client");
         let client = Client::builder()
             .build(UrlConnector::new(
                 &url).expect("Hyper client"));
         CertificateClient {
+            api_version,
             client,
-            host: url,
+            host: url.clone(),
         }
     }
 
@@ -45,7 +46,7 @@ impl CertificateClient {
 		issuer: Option<(&str, &aziot_key_common::KeyHandle)>,
     ) -> Box<dyn Future<Item = Vec<u8>, Error = Error> + Send>
     {
-        let uri = format!("{}certificates?api-version=2020-09-01", self.host.as_str());
+        let uri = format!("{}certificates?api-version={}", self.host.as_str(), self.api_version);
         let body = aziot_cert_common_http::create_cert::Request {
 			cert_id: id.to_owned(),
 			csr: aziot_cert_common_http::Pem(csr.to_owned()),
@@ -72,7 +73,7 @@ impl CertificateClient {
 		pem: &[u8],
 	) -> Box<dyn Future<Item = (), Error = Error> + Send> 
     {
-        let uri = format!("{}certificates/{}?api-version=2020-09-01", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET));
+        let uri = format!("{}certificates/{}?api-version={}", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET), self.api_version);
         let body = aziot_cert_common_http::import_cert::Request {
 			pem: aziot_cert_common_http::Pem(pem.to_owned()),
 		};
@@ -90,7 +91,7 @@ impl CertificateClient {
 		id: &str,
     ) ->  Box<dyn Future<Item = Vec<u8>, Error = Error> + Send>
     {
-		let uri = format!("{}certificates/{}?api-version=2020-09-01", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET));
+		let uri = format!("{}certificates/{}?api-version={}", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET), self.api_version);
 
 		let res = request::<_, (), aziot_cert_common_http::get_cert::Response>(
 			&self.client,
@@ -108,7 +109,7 @@ impl CertificateClient {
 		id: &str,
     ) -> Box<dyn Future<Item = (), Error = Error> + Send> 
     {
-		let uri = format!("{}certificates/{}?api-version=2020-09-01", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET));
+		let uri = format!("{}certificates/{}?api-version={}", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET), self.api_version);
 
 		request::<_, (), _>(
 			&self.client,

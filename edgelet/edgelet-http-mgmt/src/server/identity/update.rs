@@ -52,7 +52,7 @@ impl Handler<Parameters> for UpdateIdentity
                 let module_id = spec.module_id().to_string();
                 let managed_by = spec.managed_by().unwrap_or("iotedge").to_string();
 
-                rid.update_module("2020-09-01", module_id.as_ref()).then(move |identity| -> Result<_, Error> {
+                rid.update_module(module_id.as_ref()).then(move |identity| -> Result<_, Error> {
                     let identity = identity.with_context(|_| {
                         ErrorKind::IotHub
                     })?;

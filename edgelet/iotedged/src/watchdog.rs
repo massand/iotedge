@@ -257,7 +257,7 @@ where
     let id_mgr = identity_client::IdentityClient::new();
 
     let pull_future = 
-        id_mgr.create_module("2020-09-01", module_id.as_ref())
+        id_mgr.create_module(module_id.as_ref())
         .then(move |identity| {
             let identity = identity.with_context(|_| {
                 ErrorKind::IotHub

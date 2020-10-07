@@ -259,9 +259,8 @@ where
 
         info!("Obtaining edge device provisioning data...");
         
-        //TODO: Replace with factory method?
         let url = settings.endpoints().aziot_identityd_uri().clone();
-        let client = Arc::new(Mutex::new(identity_client::IdentityClient::new()));
+        let client = Arc::new(Mutex::new(identity_client::IdentityClient::new(aziot_identity_common_http::ApiVersion::V2020_09_01, &url)));
 
         let device_info = get_device_info(client)
         .map_err(|e| Error::from(e.context(ErrorKind::Initialize(InitializeErrorReason::DpsProvisioningClient))))
@@ -269,11 +268,6 @@ where
             debug!("{}:{}", hub_name, device_id);
             (hub_name, device_id)
         });
-
-        // let device_id = "device-id-iotedged-test";
-
-        // let _device_id_key_pair_handle =
-        //     key_client.create_key_pair_if_not_exists(device_id, Some("ec-p256:rsa-2048:*")).unwrap();
 
         let (hub, device_id) = tokio_runtime
             .block_on(device_info)
@@ -345,10 +339,9 @@ where
 
             if should_reprovision {
                 let url = settings.endpoints().aziot_identityd_uri().clone();
-                let key_url = settings.endpoints().aziot_keyd_uri().clone();
 
-                let client = identity_client::IdentityClient::new();
-                let _device = client.get_device("api_version")
+                let client = identity_client::IdentityClient::new(aziot_identity_common_http::ApiVersion::V2020_09_01, &url);
+                let _device = client.get_device()
                 .and_then(move |identity| {
                     debug!("{:?}", identity);
                     Ok(())
@@ -380,7 +373,7 @@ where
 
 fn get_device_info(identity_client: Arc<Mutex<IdentityClient>>) -> impl Future<Item = (String, String), Error = Error> {
     let id_mgr = identity_client.lock().unwrap();
-    id_mgr.get_device("2020-09-01")
+    id_mgr.get_device()
     .map_err(|_| Error::from(ErrorKind::Initialize(
         InitializeErrorReason::DpsProvisioningClient,
     )))
@@ -434,12 +427,9 @@ where
     )
     .with_issuer(CertificateIssuer::DeviceCa);
 
-    let id_mgr = identity_client::IdentityClient::new();
-
     let mgmt = start_management::<M>(
         settings,
         runtime,
-        id_mgr,
         mgmt_rx,
         mgmt_stop_and_reprovision_tx,
     );
@@ -631,7 +621,6 @@ where
 fn start_management<M>(
     settings: &M::Settings,
     runtime: &M::ModuleRuntime,
-    identity_client: IdentityClient,
     shutdown: Receiver<()>,
     initiate_shutdown_and_reprovision: mpsc::UnboundedSender<()>,
 ) -> impl Future<Item = (), Error = Error>
@@ -648,7 +637,9 @@ where
     let label = "mgmt".to_string();
     let url = settings.listen().management_uri().clone();
     let min_protocol_version = settings.listen().min_tls_version();
-    let identity_client = Arc::new(Mutex::new(identity_client::IdentityClient::new()));
+    
+    let identity_uri = settings.endpoints().aziot_identityd_uri().clone();
+    let identity_client = Arc::new(Mutex::new(identity_client::IdentityClient::new(aziot_identity_common_http::ApiVersion::V2020_09_01, &identity_uri)));
 
     ManagementService::new(runtime, identity_client, initiate_shutdown_and_reprovision)
         .then(move |service| -> Result<_, Error> {
@@ -696,14 +687,14 @@ where
     let min_protocol_version = settings.listen().min_tls_version();
 
     let keyd_url = settings.endpoints().aziot_keyd_uri().clone();
-    let _certd_url = settings.endpoints().aziot_certd_uri().clone();
-    let _identityd_url = settings.endpoints().aziot_identityd_uri().clone();
+    let certd_url = settings.endpoints().aziot_certd_uri().clone();
+    let identityd_url = settings.endpoints().aziot_identityd_uri().clone();
 
     let key_connector = http_common::Connector::new(&keyd_url).expect("Connector");
     let key_client = Arc::new(Mutex::new(aziot_key_client::Client::new(aziot_key_common_http::ApiVersion::V2020_09_01, key_connector)));
 
-    let cert_client = Arc::new(Mutex::new(cert_client::CertificateClient::new()));
-    let identity_client = Arc::new(Mutex::new(identity_client::IdentityClient::new()));
+    let cert_client = Arc::new(Mutex::new(cert_client::CertificateClient::new(aziot_cert_common_http::ApiVersion::V2020_09_01, &certd_url)));
+    let identity_client = Arc::new(Mutex::new(identity_client::IdentityClient::new(aziot_identity_common_http::ApiVersion::V2020_09_01, &identityd_url)));
 
     WorkloadService::new(runtime, identity_client, cert_client, key_client, config)
         .then(move |service| -> Result<_, Error> {

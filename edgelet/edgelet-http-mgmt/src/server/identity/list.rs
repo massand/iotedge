@@ -41,7 +41,7 @@ impl Handler<Parameters> for ListIdentities
         id_mgr
             .lock()
             .unwrap()
-            .get_modules("2020-09-01")
+            .get_modules()
             .then(|identities| -> Result<_, Error> {
                 let identities = identities.context(ErrorKind::IdentityOperation(
                     IdentityOperation::ListIdentities,

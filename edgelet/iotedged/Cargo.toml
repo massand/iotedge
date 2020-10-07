@@ -34,7 +34,9 @@ edgelet-http-mgmt = { path = "../edgelet-http-mgmt" }
 edgelet-http-workload = { path = "../edgelet-http-workload" }
 edgelet-utils = { path = "../edgelet-utils" }
 signal-future = { path = "../signal-future" }
+aziot-cert-common-http = { path = "../../aziot/cert/aziot-cert-common-http" }
 aziot-identity-common = { path = "../../aziot/identity/aziot-identity-common" }
+aziot-identity-common-http = { path = "../../aziot/identity/aziot-identity-common-http" }
 aziot-key-client = { path = "../../aziot/key/aziot-key-client" }
 aziot-key-common = { path = "../../aziot/key/aziot-key-common" }
 aziot-key-common-http = { path = "../../aziot/key/aziot-key-common-http" }
