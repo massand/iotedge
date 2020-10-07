@@ -45,7 +45,7 @@ impl CertificateClient {
 		issuer: Option<(&str, &aziot_key_common::KeyHandle)>,
     ) -> Box<dyn Future<Item = Vec<u8>, Error = Error> + Send>
     {
-        let uri = format!("{}certificates", self.host.as_str());
+        let uri = format!("{}certificates?api-version=2020-09-01", self.host.as_str());
         let body = aziot_cert_common_http::create_cert::Request {
 			cert_id: id.to_owned(),
 			csr: aziot_cert_common_http::Pem(csr.to_owned()),
@@ -72,7 +72,7 @@ impl CertificateClient {
 		pem: &[u8],
 	) -> Box<dyn Future<Item = (), Error = Error> + Send> 
     {
-        let uri = format!("{}certificates/{}", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET));
+        let uri = format!("{}certificates/{}?api-version=2020-09-01", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET));
         let body = aziot_cert_common_http::import_cert::Request {
 			pem: aziot_cert_common_http::Pem(pem.to_owned()),
 		};
@@ -90,7 +90,7 @@ impl CertificateClient {
 		id: &str,
     ) ->  Box<dyn Future<Item = Vec<u8>, Error = Error> + Send>
     {
-		let uri = format!("{}certificates/{}", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET));
+		let uri = format!("{}certificates/{}?api-version=2020-09-01", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET));
 
 		let res = request::<_, (), aziot_cert_common_http::get_cert::Response>(
 			&self.client,
@@ -108,7 +108,7 @@ impl CertificateClient {
 		id: &str,
     ) -> Box<dyn Future<Item = (), Error = Error> + Send> 
     {
-		let uri = format!("{}certificates/{}", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET));
+		let uri = format!("{}certificates/{}?api-version=2020-09-01", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET));
 
 		request::<_, (), _>(
 			&self.client,

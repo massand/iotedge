@@ -700,7 +700,7 @@ where
     let _identityd_url = settings.endpoints().aziot_identityd_uri().clone();
 
     let key_connector = http_common::Connector::new(&keyd_url).expect("Connector");
-    let key_client = Arc::new(Mutex::new(aziot_key_client::Client::new(key_connector)));
+    let key_client = Arc::new(Mutex::new(aziot_key_client::Client::new(aziot_key_common_http::ApiVersion::V2020_09_01, key_connector)));
 
     let cert_client = Arc::new(Mutex::new(cert_client::CertificateClient::new()));
     let identity_client = Arc::new(Mutex::new(identity_client::IdentityClient::new()));

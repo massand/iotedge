@@ -578,7 +578,7 @@ dependencies = [
  "log",
  "mio-uds-windows",
  "native-tls",
- "nix",
+ "nix 0.14.1",
  "openssl",
  "percent-encoding 2.1.0",
  "rand 0.4.6",
@@ -1018,9 +1018,13 @@ version = "0.1.0"
 dependencies = [
  "base64 0.12.3",
  "futures-util",
+ "http 0.2.1",
  "hyper 0.13.7",
+ "lazy_static",
+ "nix 0.18.0",
  "percent-encoding 2.1.0",
  "serde",
+ "serde_json",
  "tokio 0.2.22",
  "url 2.1.1",
 ]
@@ -1282,6 +1286,7 @@ dependencies = [
  "aziot-identity-common",
  "aziot-key-client",
  "aziot-key-common",
+ "aziot-key-common-http",
  "aziot-key-openssl-engine",
  "base64 0.9.3",
  "cert-client",
@@ -1609,6 +1614,18 @@ dependencies = [
  "cfg-if",
  "libc",
  "void",
+]
+
+[[package]]
+name = "nix"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83450fe6a6142ddd95fb064b746083fc4ef1705fe81f64a64e1d4b39f54a1055"
+dependencies = [
+ "bitflags",
+ "cc",
+ "cfg-if",
+ "libc",
 ]
 
 [[package]]
@@ -2352,7 +2369,7 @@ dependencies = [
  "failure",
  "lazy_static",
  "log",
- "nix",
+ "nix 0.14.1",
 ]
 
 [[package]]

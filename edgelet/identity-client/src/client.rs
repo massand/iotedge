@@ -37,7 +37,7 @@ impl IdentityClient {
         _api_version: &str,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
-        let uri = format!("{}identities/device", self.host.as_str());
+        let uri = format!("{}identities/device?api-version=2020-09-01", self.host.as_str());
         let body = serde_json::json! {{ "type": "aziot" }};
 
         request(
@@ -53,7 +53,7 @@ impl IdentityClient {
         _api_version: &str,
     ) -> Box<dyn Future<Item = (), Error = Error> + Send> 
     {
-        let uri = format!("{}identities/device/reprovision", self.host.as_str());
+        let uri = format!("{}identities/device/reprovision?api-version=2020-09-01", self.host.as_str());
         let body = serde_json::json! {{ "type": "aziot" }};
 
         request(
@@ -70,7 +70,7 @@ impl IdentityClient {
         module_name: &str,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
-        let uri = format!("{}identities/modules", self.host.as_str());
+        let uri = format!("{}identities/modules?api-version=2020-09-01", self.host.as_str());
         let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
 
         request(
@@ -87,13 +87,14 @@ impl IdentityClient {
         module_name: &str,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
-        let uri = format!("{}identities/modules/{}", self.host.as_str(), module_name);
+        let uri = format!("{}identities/modules/{}?api-version=2020-09-01", self.host.as_str(), module_name);
+        let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
 
-        request::<_, (), _>(
+        request(
             &self.client,
             hyper::Method::PUT,
             &uri,
-            None,
+            Some(&body),
         )
     }
 
@@ -103,7 +104,7 @@ impl IdentityClient {
         module_name: &str,
     ) -> Box<dyn Future<Item = (), Error = Error> + Send> 
     {       
-        let uri = format!("{}identities/modules/{}", self.host.as_str(), module_name);
+        let uri = format!("{}identities/modules/{}?api-version=2020-09-01", self.host.as_str(), module_name);
 
         request::<_, (), _>(
             &self.client,
@@ -119,7 +120,7 @@ impl IdentityClient {
         module_name: &str,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
-        let uri = format!("{}identities/modules/{}", self.host.as_str(), module_name);
+        let uri = format!("{}identities/modules/{}?api-version=2020-09-01", self.host.as_str(), module_name);
         let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
 
         request(
@@ -135,7 +136,7 @@ impl IdentityClient {
         _api_version: &str,
     ) -> Box<dyn Future<Item = Vec<aziot_identity_common::Identity>, Error = Error> + Send> 
     {
-        let uri = format!("{}identities/modules", self.host.as_str());
+        let uri = format!("{}identities/modules?api-version=2020-09-01", self.host.as_str());
 
         let identities = request::<_, (), aziot_identity_common_http::get_module_identities::Response>(
             &self.client,
