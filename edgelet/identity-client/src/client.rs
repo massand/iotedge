@@ -40,12 +40,19 @@ impl IdentityClient {
         let uri = format!("{}identities/device?api-version={}", self.host.as_str(), self.api_version);
         let body = serde_json::json! {{ "type": "aziot" }};
 
-        request(
+        let identity = request(
             &self.client,
             hyper::Method::POST,
             &uri,
             Some(&body),
         )
+        .and_then(|identity| {
+            Ok(identity)
+        })
+        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::GetDevice))));
+
+        Box::new(identity)
+
     }
     
     pub fn reprovision_device(
@@ -55,12 +62,18 @@ impl IdentityClient {
         let uri = format!("{}identities/device/reprovision?api-version={}", self.host.as_str(), self.api_version);
         let body = serde_json::json! {{ "type": "aziot" }};
 
-        request(
+        let res = request::<_, _, ()>(
             &self.client,
             hyper::Method::POST,
             &uri,
             Some(&body),
         )
+        .and_then(|_| {
+            Ok(())
+        })
+        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::ReprovisionDevice))));
+
+        Box::new(res)
     }
 
     pub fn create_module(
@@ -71,12 +84,18 @@ impl IdentityClient {
         let uri = format!("{}identities/modules?api-version={}", self.host.as_str(), self.api_version);
         let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
 
-        request(
+        let identity = request(
             &self.client,
             hyper::Method::POST,
             &uri,
             Some(&body),
         )
+        .and_then(|identity| {
+            Ok(identity)
+        })
+        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::CreateModule))));
+
+        Box::new(identity)
     }
 
     pub fn update_module(
@@ -87,12 +106,18 @@ impl IdentityClient {
         let uri = format!("{}identities/modules/{}?api-version={}", self.host.as_str(), module_name, self.api_version);
         let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
 
-        request(
+        let identity = request(
             &self.client,
             hyper::Method::PUT,
             &uri,
             Some(&body),
         )
+        .and_then(|identity| {
+            Ok(identity)
+        })
+        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::UpdateModule))));
+
+        Box::new(identity)
     }
 
     pub fn delete_module(
@@ -102,12 +127,18 @@ impl IdentityClient {
     {       
         let uri = format!("{}identities/modules/{}?api-version={}", self.host.as_str(), module_name, self.api_version);
 
-        request::<_, (), _>(
+        let res = request::<_, (), ()>(
             &self.client,
             hyper::Method::DELETE,
             &uri,
             None,
         )
+        .and_then(|_| {
+            Ok(())
+        })
+        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::DeleteModule))));
+
+        Box::new(res)
     }
 
     pub fn get_module(
@@ -118,12 +149,18 @@ impl IdentityClient {
         let uri = format!("{}identities/modules/{}?api-version={}", self.host.as_str(), module_name, self.api_version);
         let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
 
-        request(
+        let identity = request(
             &self.client,
             hyper::Method::GET,
             &uri,
             Some(&body),
         )
+        .and_then(|identity| {
+            Ok(identity)
+        })
+        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::GetModule))));
+
+        Box::new(identity)
     }
 
     pub fn get_modules(
@@ -140,7 +177,8 @@ impl IdentityClient {
         )
         .and_then(|identities| {
             Ok(identities.identities)
-        });
+        })
+        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::ListModules))));
         
         Box::new(identities)
     }
@@ -193,7 +231,7 @@ where
         .and_then(|body| {
             let parsed: Result<TResponse, _> =
                 serde_json::from_slice(&body);
-            parsed.map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::ListModules))))
+            parsed.map_err(|e| Error::from(ErrorKind::Serde(e)))
         })
     )
 }

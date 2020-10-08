@@ -63,7 +63,7 @@ impl CertificateClient {
             Some(&body),
         )
         .and_then(|res| Ok(res.pem.0))
-        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::ListModules))));
+        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::CreateCertificate))));
         Box::new(res)
     }
     
@@ -71,19 +71,22 @@ impl CertificateClient {
 		&self,
 		id: &str,
 		pem: &[u8],
-	) -> Box<dyn Future<Item = (), Error = Error> + Send> 
+	) -> Box<dyn Future<Item = Vec<u8>, Error = Error> + Send> 
     {
         let uri = format!("{}certificates/{}?api-version={}", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET), self.api_version);
         let body = aziot_cert_common_http::import_cert::Request {
 			pem: aziot_cert_common_http::Pem(pem.to_owned()),
 		};
 
-        request(
+        let res = request::<_, aziot_cert_common_http::import_cert::Request, aziot_cert_common_http::import_cert::Response>(
             &self.client,
             hyper::Method::POST,
             &uri,
             Some(&body),
         )
+        .and_then(|res| Ok(res.pem.0))
+        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::ImportCertificate))));
+        Box::new(res)
     }
 
     pub fn get_cert(
@@ -100,7 +103,7 @@ impl CertificateClient {
 			None,
         )
         .and_then(|res| Ok(res.pem.0))
-        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::ListModules))));
+        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::GetCertificate))));
         Box::new(res)
 	}
 
@@ -111,12 +114,14 @@ impl CertificateClient {
     {
 		let uri = format!("{}certificates/{}?api-version={}", self.host.as_str(), percent_encoding::percent_encode(id.as_bytes(), PATH_SEGMENT_ENCODE_SET), self.api_version);
 
-		request::<_, (), _>(
+		let res = request::<_, (), _>(
 			&self.client,
 			http::Method::DELETE,
 			&uri,
 			None,
-		)
+        )
+        .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::DeleteCertificate))));
+        Box::new(res)
 	}
 }
 
@@ -167,7 +172,7 @@ where
         .and_then(|body| {
             let parsed: Result<TResponse, _> =
                 serde_json::from_slice(&body);
-            parsed.map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::ListModules))))
+            parsed.map_err(|e| Error::from(ErrorKind::Serde(e)))
         })
     )
 }

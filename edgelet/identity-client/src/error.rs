@@ -32,9 +32,8 @@ pub enum ErrorKind {
     #[fail(display = "HTTP response error: {}", _0)]
     JsonParse(RequestType),
 
-    // #[cfg(test)]
-    // #[fail(display = "HTTP test error")]
-    // HttpTest,
+    #[fail(display = "Serde error: {:?}", _0)]
+    Serde(serde_json::Error),
 }
 
 impl Fail for Error {
@@ -97,6 +96,7 @@ pub enum RequestType {
     DeleteModule,
     GetModule,
     ListModules,
+    UpdateModule,
 }
 
 impl Display for RequestType {

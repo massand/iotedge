@@ -28,7 +28,7 @@ use crate::error::{Error,ErrorKind};
 const EDGE_RUNTIME_STOP_TIME: Duration = Duration::from_secs(60);
 
 /// This variable holds the generation ID associated with the Edge Agent module.
-const _MODULE_GENERATIONID: &str = "IOTEDGE_MODULEGENERATIONID";
+const MODULE_GENERATIONID: &str = "IOTEDGE_MODULEGENERATIONID";
 
 /// This is the frequency with which the watchdog checks for the status of the edge runtime module.
 const WATCHDOG_FREQUENCY_SECS: u64 = 60;
@@ -36,6 +36,7 @@ const WATCHDOG_FREQUENCY_SECS: u64 = 60;
 pub struct Watchdog<M> {
     runtime: M,
     max_retries: RetryLimit,
+    identityd_url: url::Url,
 }
 
 impl<M> Watchdog<M>
@@ -44,10 +45,11 @@ where
     for<'r> &'r <M as ModuleRuntime>::Error: Into<ModuleRuntimeErrorReason>,
     <M::Module as Module>::Config: Clone,
 {
-    pub fn new(runtime: M, max_retries: RetryLimit) -> Self {
+    pub fn new(runtime: M, max_retries: RetryLimit, identityd_url: &url::Url) -> Self {
         Watchdog {
             runtime,
             max_retries,
+            identityd_url: identityd_url.clone(),
         }
     }
 
@@ -68,8 +70,9 @@ where
         let name = spec.name().to_string();
         let module_id = module_id.to_string();
         let max_retries = self.max_retries;
+        let identityd_url = self.identityd_url.clone();
 
-        let watchdog = start_watchdog(runtime, spec, module_id, max_retries);
+        let watchdog = start_watchdog(runtime, spec, module_id, max_retries, identityd_url);
 
         // Swallow any errors from shutdown_signal
         let shutdown_signal = shutdown_signal.then(|_| Ok(()));
@@ -111,6 +114,7 @@ pub fn start_watchdog<M>(
     spec: ModuleSpec<<M::Module as Module>::Config>,
     module_id: String,
     max_retries: RetryLimit,
+    identityd_url: url::Url,
 ) -> impl Future<Item = (), Error = Error>
 where
     M: 'static + ModuleRuntime + Clone,
@@ -125,10 +129,12 @@ where
         .map_err(|err| Error::from(err.context(ErrorKind::EdgeRuntimeStatusCheckerTimer)))
         .and_then(move |_| {
             info!("Checking edge runtime status");
+            
             check_runtime(
                 runtime.clone(),
                 spec.clone(),
                 module_id.clone(),
+                identityd_url.clone(),
             )
             .and_then(|_| future::ok(None))
             .or_else(|e| {
@@ -157,6 +163,7 @@ fn check_runtime<M>(
     runtime: M,
     spec: ModuleSpec<<M::Module as Module>::Config>,
     module_id: String,
+    identityd_url: url::Url,
 ) -> impl Future<Item = (), Error = Error>
 where
     M: 'static + ModuleRuntime + Clone,
@@ -189,7 +196,7 @@ where
                 Either::A(res)
             }
 
-            None => Either::B(create_and_start(runtime, spec, module_id)),
+            None => Either::B(create_and_start(runtime, spec, module_id, identityd_url.clone())),
         })
         .map(|_| ())
 }
@@ -209,42 +216,11 @@ where
         .map_err(|e| Error::from(e.context(ErrorKind::ModuleRuntime)))
 }
 
-// // Gets and updates the identity of the module.
-// fn update_identity<I>(
-//     id_mgr: &mut I,
-//     module_id: String,
-// ) -> impl Future<Item = I::Identity, Error = Error>
-// where
-//     I: 'static + IdentityManager + Clone,
-// {
-//     //TODO: delete (ignore if doesn't exist) and create edgeAgent identity
-//     let mut id_mgr_copy = id_mgr.clone();
-//     id_mgr
-//         .get(IdentitySpec::new(module_id))
-//         .map_err(|e| Error::from(e.context(ErrorKind::ModuleRuntime)))
-//         .and_then(move |identity| match identity {
-//             Some(module) => {
-//                 info!("Updating identity for module {}", module.module_id());
-//                 let res = id_mgr_copy
-//                     .update(
-//                         IdentitySpec::new(module.module_id().to_string())
-//                             .with_generation_id(module.generation_id().to_string()),
-//                     )
-//                     .map_err(|e| Error::from(e.context(ErrorKind::IdentityManager)));
-//                 Either::A(res)
-//             }
-//             None => Either::B(
-//                 future::err(Error::from(ErrorKind::EdgeRuntimeIdentityNotFound))
-//                     as FutureResult<I::Identity, Error>,
-//             ),
-//         })
-// }
-
-// Edge agent does not exist - pull, create and start the container
 fn create_and_start<M>(
     runtime: M,
     spec: ModuleSpec<<M::Module as Module>::Config>,
     module_id: String,
+    identityd_url: url::Url,
 ) -> impl Future<Item = (), Error = Error>
 where
     M: 'static + ModuleRuntime + Clone,
@@ -254,292 +230,39 @@ where
     info!("Creating and starting edge runtime module {}", module_name);
     let runtime_copy = runtime.clone();
 
-    let id_mgr = identity_client::IdentityClient::new();
+    let id_mgr = identity_client::IdentityClient::new(aziot_identity_common_http::ApiVersion::V2020_09_01, &identityd_url);
 
-    let pull_future = 
-        id_mgr.create_module(module_id.as_ref())
-        .then(move |identity| {
-            let identity = identity.with_context(|_| {
-                ErrorKind::IotHub
-            })?;
-
-            let (module_id, generation_id, auth) = match identity {
-                AziotIdentity::Aziot(spec) => {
-                    (spec.module_id.ok_or(ErrorKind::IotHub)
-                    .with_context(|_| {
-                        ErrorKind::IotHub
-                    })?,
-                    spec.gen_id.ok_or(ErrorKind::IotHub)
-                    .with_context(|_| {
-                        ErrorKind::IotHub
-                    })?,
-                    spec.auth.ok_or(ErrorKind::IotHub)
-                    .with_context(|_| {
-                        ErrorKind::IotHub
-                    })?)
-                }
-            };
-
-            let mut env = spec.env().clone();
-            env.insert(
-                _MODULE_GENERATIONID.to_string(),
-                generation_id.0.to_owned(),
-            );
-            let spec = spec.with_env(env);
-
-            match spec.image_pull_policy() {
-                ImagePullPolicy::Never => Either::A(future::ok(())),
-                ImagePullPolicy::OnCreate => Either::B(runtime.registry().pull(spec.config())),
-            };
-        });
-    pull_future
-        .and_then(move |_| runtime.create(spec))
-        .and_then(move |_| runtime_copy.start(&module_name))
-        .map_err(|e| Error::from(e.context(ErrorKind::ModuleRuntime)))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{update_identity, Fail, Future};
-    use std::cell::RefCell;
-    use std::rc::Rc;
-
-    use futures::future::{self, FutureResult};
-
-    use crate::identity::{AuthType, Identity, IdentityManager, IdentitySpec};
-    use serde_derive::{Deserialize, Serialize};
-
-    #[derive(Clone, Copy, Debug, Fail)]
-    pub enum Error {
-        #[fail(display = "General error")]
-        General,
-
-        #[fail(display = "Module not found")]
-        ModuleNotFound,
-    }
-
-    #[derive(Clone, Debug, Deserialize, Serialize)]
-    pub struct TestIdentity {
-        #[serde(rename = "moduleId")]
-        module_id: String,
-        #[serde(rename = "managedBy")]
-        managed_by: String,
-        #[serde(rename = "generationId")]
-        generation_id: String,
-        #[serde(rename = "authType")]
-        auth_type: AuthType,
-    }
-
-    impl TestIdentity {
-        pub fn new(
-            module_id: &str,
-            managed_by: &str,
-            generation_id: &str,
-            auth_type: AuthType,
-        ) -> Self {
-            TestIdentity {
-                module_id: module_id.to_string(),
-                managed_by: managed_by.to_string(),
-                generation_id: generation_id.to_string(),
-                auth_type,
+    id_mgr.update_module(module_id.as_ref())
+    .then(move |identity| -> Result<_, Error> {
+        let identity = identity.with_context(|_| {
+            ErrorKind::ModuleRuntime
+        })?;
+        
+        let (module, genid, auth) = match identity {
+            AziotIdentity::Aziot(spec) => {
+                (spec.module_id.ok_or(Error::from(ErrorKind::ModuleRuntime))?,
+                spec.gen_id.ok_or(Error::from(ErrorKind::ModuleRuntime))?,
+                spec.auth.ok_or(Error::from(ErrorKind::ModuleRuntime))?)
             }
-        }
-    }
-
-    impl Identity for TestIdentity {
-        fn module_id(&self) -> &str {
-            &self.module_id
-        }
-
-        fn managed_by(&self) -> &str {
-            &self.managed_by
-        }
-
-        fn generation_id(&self) -> &str {
-            &self.generation_id
-        }
-
-        fn auth_type(&self) -> AuthType {
-            self.auth_type
-        }
-    }
-
-    struct State {
-        identities: Vec<TestIdentity>,
-        gen_id_sentinel: u32,
-        fail_get: bool,
-        fail_update: bool,
-        update_called: bool,
-    }
-
-    #[derive(Clone)]
-    pub struct TestIdentityManager {
-        state: Rc<RefCell<State>>,
-    }
-
-    impl TestIdentityManager {
-        pub fn new(identities: Vec<TestIdentity>) -> Self {
-            TestIdentityManager {
-                state: Rc::new(RefCell::new(State {
-                    identities,
-                    gen_id_sentinel: 0,
-                    fail_get: false,
-                    fail_update: false,
-                    update_called: false,
-                })),
-            }
-        }
-
-        pub fn with_fail_get(self, fail_get: bool) -> Self {
-            self.state.borrow_mut().fail_get = fail_get;
-            self
-        }
-
-        pub fn with_fail_update(self, fail_update: bool) -> Self {
-            self.state.borrow_mut().fail_update = fail_update;
-            self
-        }
-    }
-
-    impl IdentityManager for TestIdentityManager {
-        type Identity = TestIdentity;
-        type Error = Error;
-        type CreateFuture = FutureResult<Self::Identity, Self::Error>;
-        type UpdateFuture = FutureResult<Self::Identity, Self::Error>;
-        type ListFuture = FutureResult<Vec<Self::Identity>, Self::Error>;
-        type GetFuture = FutureResult<Option<Self::Identity>, Self::Error>;
-        type DeleteFuture = FutureResult<(), Self::Error>;
-
-        fn create(&mut self, id: IdentitySpec) -> Self::CreateFuture {
-            self.state.borrow_mut().gen_id_sentinel += 1;
-            let id = TestIdentity::new(
-                id.module_id(),
-                "iotedge",
-                &format!("{}", self.state.borrow().gen_id_sentinel),
-                AuthType::Sas,
-            );
-            self.state.borrow_mut().identities.push(id.clone());
-
-            future::ok(id)
-        }
-
-        fn update(&mut self, id: IdentitySpec) -> Self::UpdateFuture {
-            self.state.borrow_mut().update_called = true;
-
-            if self.state.borrow().fail_update {
-                future::err(Error::General)
-            } else {
-                // find the existing module
-                let index = self
-                    .state
-                    .borrow()
-                    .identities
-                    .iter()
-                    .position(|m| m.module_id() == id.module_id())
-                    .unwrap();
-
-                let mut module = self.state.borrow().identities[index].clone();
-
-                // verify if genid matches
-                assert_eq!(&module.generation_id, id.generation_id().unwrap());
-
-                // set the sas type
-                module.auth_type = AuthType::Sas;
-
-                // delete/insert updated module
-                self.state.borrow_mut().identities.remove(index);
-                self.state.borrow_mut().identities.push(module.clone());
-
-                future::ok(module)
-            }
-        }
-
-        fn list(&self) -> Self::ListFuture {
-            future::ok(self.state.borrow().identities.clone())
-        }
-
-        fn get(&self, id: IdentitySpec) -> Self::GetFuture {
-            if self.state.borrow().fail_get {
-                future::err(Error::General)
-            } else {
-                match self
-                    .state
-                    .borrow()
-                    .identities
-                    .iter()
-                    .find(|m| m.module_id() == id.module_id())
-                {
-                    Some(module) => future::ok(Some(module.clone())),
-                    None => future::err(Error::ModuleNotFound),
-                }
-            }
-        }
-
-        fn delete(&mut self, id: IdentitySpec) -> Self::DeleteFuture {
-            self.state
-                .borrow()
-                .identities
-                .iter()
-                .position(|ref mid| mid.module_id() == id.module_id())
-                .map(|index| self.state.borrow_mut().identities.remove(index))
-                .map_or_else(|| future::err(Error::ModuleNotFound), |_| future::ok(()))
-        }
-    }
-
-    #[test]
-    fn update_identity_get_fails() {
-        let mut manager = TestIdentityManager::new(vec![]).with_fail_get(true);
-        assert_eq!(
-            true,
-            update_identity(&mut manager, "$edgeAgent".to_string())
-                .wait()
-                .is_err()
+        };
+        Ok((module, genid, auth))
+    })
+    .into_future()
+    .and_then(move |(module_id, generation_id, auth)| {
+        let mut env = spec.env().clone();
+        env.insert(
+            MODULE_GENERATIONID.to_string(),
+            generation_id.0.to_owned(),
         );
-    }
+        let spec = spec.with_env(env);
 
-    #[test]
-    fn update_identity_update_fails() {
-        let mut manager = TestIdentityManager::new(vec![TestIdentity::new(
-            "$edgeAgent",
-            "iotedge",
-            "1",
-            AuthType::None,
-        )])
-        .with_fail_update(true);
+        let pull_future = match spec.image_pull_policy() {
+            ImagePullPolicy::Never => Either::A(future::ok(())),
+            ImagePullPolicy::OnCreate => Either::B(runtime.registry().pull(spec.config()).map_err(|e| Error::from(ErrorKind::ModuleRuntime))),
+        };
 
-        assert_eq!(
-            true,
-            update_identity(&mut manager, "$edgeAgent".to_string())
-                .wait()
-                .is_err()
-        );
-        assert_eq!(true, manager.state.borrow().update_called);
-    }
-
-    #[test]
-    fn update_identity_succeeds() {
-        let mut manager = TestIdentityManager::new(vec![TestIdentity::new(
-            "$edgeAgent",
-            "iotedge",
-            "1",
-            AuthType::None,
-        )]);
-
-        assert_eq!(
-            false,
-            update_identity(&mut manager, "$edgeAgent".to_string())
-                .wait()
-                .is_err()
-        );
-        assert_eq!(true, manager.state.borrow().update_called);
-        assert_eq!(
-            AuthType::Sas,
-            manager
-                .get(IdentitySpec::new("$edgeAgent".to_string()))
-                .wait()
-                .unwrap()
-                .unwrap()
-                .auth_type
-        );
-    }
+        pull_future
+            .and_then(move |_| runtime.create(spec).map_err(|e| Error::from(e.context(ErrorKind::ModuleRuntime))))
+            .and_then(move |_| runtime_copy.start(&module_name).map_err(|e| Error::from(e.context(ErrorKind::ModuleRuntime))))
+    })
 }

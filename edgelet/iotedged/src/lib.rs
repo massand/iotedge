@@ -21,6 +21,7 @@ pub mod app;
 mod error;
 pub mod logging;
 pub mod signal;
+pub mod watchdog;
 pub mod workload;
 
 #[cfg(not(target_os = "windows"))]
@@ -58,7 +59,6 @@ use edgelet_core::crypto::{
     MasterEncryptionKey, MemoryKey, MemoryKeyStore, Sign, Signature, SignatureAlgorithm,
     IOTEDGED_CA_ALIAS,
 };
-use edgelet_core::watchdog::Watchdog;
 use edgelet_core::{
     AttestationMethod, Authenticator, Certificate, CertificateIssuer, CertificateProperties,
     CertificateType, Dps, MakeModuleRuntime, ManualAuthMethod, Module, ModuleRuntime,
@@ -76,6 +76,7 @@ use edgelet_utils::log_failure;
 pub use error::{Error, ErrorKind, InitializeErrorReason};
 
 use crate::error::ExternalProvisioningErrorReason;
+use crate::watchdog::Watchdog;
 use crate::workload::WorkloadData;
 
 const EDGE_RUNTIME_MODULEID: &str = "$edgeAgent";
@@ -563,7 +564,7 @@ where
     )
     .context(ErrorKind::Initialize(InitializeErrorReason::EdgeRuntime))?;
 
-    let watchdog = Watchdog::new(runtime, settings.watchdog().max_retries());
+    let watchdog = Watchdog::new(runtime, settings.watchdog().max_retries(), settings.endpoints().aziot_identityd_uri());
     let runtime_future = watchdog
         .run_until(spec, EDGE_RUNTIME_MODULEID, shutdown.map_err(|_| ()))
         .map_err(Error::from);

@@ -29,12 +29,11 @@ pub enum ErrorKind {
     #[fail(display = "HTTP response error: [{}] {}", _0, _1)]
     Response(StatusCode, String),
 
-    #[fail(display = "HTTP response error: {}", _0)]
+    #[fail(display = "Json Parse error for request: {}", _0)]
     JsonParse(RequestType),
 
-    // #[cfg(test)]
-    // #[fail(display = "HTTP test error")]
-    // HttpTest,
+    #[fail(display = "Serde error: {:?}", _0)]
+    Serde(serde_json::Error),
 }
 
 impl Fail for Error {
@@ -91,12 +90,10 @@ impl From<Context<ErrorKind>> for Error {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum RequestType {
-    GetDevice,
-    ReprovisionDevice,
-    CreateModule,
-    DeleteModule,
-    GetModule,
-    ListModules,
+    GetCertificate,
+    CreateCertificate,
+    DeleteCertificate,
+    ImportCertificate,
 }
 
 impl Display for RequestType {

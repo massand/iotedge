@@ -30,6 +30,9 @@ pub enum ErrorKind {
     #[fail(display = "The device has been de-provisioned")]
     DeviceDeprovisioned,
 
+    #[fail(display = "The timer that checks the edge runtime status encountered an error.")]
+    EdgeRuntimeStatusCheckerTimer,
+    
     #[fail(display = "The daemon could not start up successfully: {}", _0)]
     Initialize(InitializeErrorReason),
 
@@ -39,6 +42,9 @@ pub enum ErrorKind {
     #[fail(display = "The management service encountered an error")]
     ManagementService,
 
+    #[fail(display = "A module runtime error occurred.")]
+    ModuleRuntime,
+    
     #[fail(display = "The reprovisioning operation failed")]
     ReprovisionFailure,
 

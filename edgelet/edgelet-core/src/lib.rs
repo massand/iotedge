@@ -20,14 +20,13 @@ mod authentication;
 mod authorization;
 mod certificate_properties;
 pub mod crypto;
-mod error;
+pub mod error;
 mod identity;
 mod logs;
-mod module;
+pub mod module;
 mod network;
 mod parse_since;
-mod settings;
-pub mod watchdog;
+pub mod settings;
 pub mod workload;
 
 pub use authentication::Authenticator;
