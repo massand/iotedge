@@ -30,8 +30,6 @@ workload = { path = "../workload" }
 
 [dev-dependencies]
 edgelet-test-utils = { path = "../edgelet-test-utils" }
-
-[target.'cfg(not(windows))'.dev-dependencies]
 native-tls = "0.2"
 openssl = "0.10"
 tempfile = "3"

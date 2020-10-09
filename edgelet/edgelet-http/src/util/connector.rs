@@ -20,35 +20,25 @@ use futures::{future, Future};
 use hyper::client::connect::{Connect, Connected, Destination};
 use hyper::client::HttpConnector;
 use hyper::Uri;
-#[cfg(windows)]
-use hyper_named_pipe::{PipeConnector, Uri as PipeUri};
 #[cfg(unix)]
 use hyperlocal::{UnixConnector, Uri as HyperlocalUri};
-#[cfg(windows)]
-use hyperlocal_windows::{UnixConnector, Uri as HyperlocalUri};
 use url::{ParseError, Url};
 
 use edgelet_core::UrlExt;
 
 use crate::error::{Error, ErrorKind, InvalidUrlReason};
 use crate::util::{socket_file_exists, StreamSelector};
-#[cfg(windows)]
-use crate::PIPE_SCHEME;
 use crate::{HTTP_SCHEME, UNIX_SCHEME};
 
 #[derive(Clone)]
 pub enum UrlConnector {
     Http(HttpConnector),
-    #[cfg(windows)]
-    Pipe(PipeConnector),
     Unix(UnixConnector),
 }
 
 impl UrlConnector {
     pub fn new(url: &Url) -> Result<Self, Error> {
         match url.scheme() {
-            #[cfg(windows)]
-            PIPE_SCHEME => Ok(UrlConnector::Pipe(PipeConnector)),
 
             UNIX_SCHEME => {
                 let file_path = url
@@ -81,14 +71,6 @@ impl UrlConnector {
 
     pub fn build_hyper_uri(scheme: &str, base_path: &str, path: &str) -> Result<Uri, Error> {
         match &*scheme {
-            #[cfg(windows)]
-            PIPE_SCHEME => Ok(PipeUri::new(base_path, &path)
-                .with_context(|_| ErrorKind::MalformedUrl {
-                    scheme: scheme.to_string(),
-                    base_path: base_path.to_string(),
-                    path: path.to_string(),
-                })?
-                .into()),
             UNIX_SCHEME => Ok(HyperlocalUri::new(base_path, &path).into()),
             HTTP_SCHEME => Ok(Url::parse(base_path)
                 .and_then(|base| base.join(path))
@@ -112,8 +94,6 @@ impl std::fmt::Debug for UrlConnector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             UrlConnector::Http(_) => f.debug_struct("Http").finish(),
-            #[cfg(windows)]
-            UrlConnector::Pipe(_) => f.debug_struct("Pipe").finish(),
             UrlConnector::Unix(_) => f.debug_struct("UnixConnector").finish(),
         }
     }
@@ -129,9 +109,6 @@ impl Connect for UrlConnector {
         match (self, dst.scheme()) {
             (UrlConnector::Http(_), HTTP_SCHEME) => (),
 
-            #[cfg(windows)]
-            (UrlConnector::Pipe(_), PIPE_SCHEME) => (),
-
             (UrlConnector::Unix(_), UNIX_SCHEME) => (),
 
             (_, scheme) => {
@@ -146,13 +123,6 @@ impl Connect for UrlConnector {
             UrlConnector::Http(connector) => {
                 Box::new(connector.connect(dst).and_then(|(tcp_stream, connected)| {
                     Ok((StreamSelector::Tcp(tcp_stream), connected))
-                })) as Self::Future
-            }
-
-            #[cfg(windows)]
-            UrlConnector::Pipe(connector) => {
-                Box::new(connector.connect(dst).and_then(|(pipe_stream, connected)| {
-                    Ok((StreamSelector::Pipe(pipe_stream), connected))
                 })) as Self::Future
             }
 
@@ -187,11 +157,8 @@ mod tests {
             Ok(_) => panic!("Expected UrlConnector::new to fail"),
             Err(err) => err,
         };
-        if cfg!(windows) {
-            assert!(err.to_string().contains("Invalid URL"));
-        } else {
-            assert!(err.to_string().contains("Socket file could not be found"));
-        }
+        
+        assert!(err.to_string().contains("Socket file could not be found"));
     }
 
     #[test]
@@ -205,11 +172,5 @@ mod tests {
     #[test]
     fn create_http_succeeds() {
         let _connector = UrlConnector::new(&Url::parse("http://localhost:2375").unwrap()).unwrap();
-    }
-
-    #[cfg(windows)]
-    #[test]
-    fn create_pipe_succeeds() {
-        let _connector = UrlConnector::new(&Url::parse("npipe://./pipe/boo").unwrap()).unwrap();
     }
 }

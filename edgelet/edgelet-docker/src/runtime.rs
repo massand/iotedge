@@ -640,9 +640,6 @@ impl ModuleRuntime for DockerModuleRuntime {
             }
         };
 
-        #[cfg(windows)]
-        let uptime: u64 = unsafe { winapi::um::sysinfoapi::GetTickCount64() / 1000 };
-
         let mut system_resources = self
             .system_resources
             .as_ref()

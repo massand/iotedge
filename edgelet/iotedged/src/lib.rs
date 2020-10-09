@@ -24,11 +24,7 @@ pub mod signal;
 pub mod watchdog;
 pub mod workload;
 
-#[cfg(not(target_os = "windows"))]
 pub mod unix;
-
-#[cfg(target_os = "windows")]
-pub mod windows;
 
 use futures::sync::mpsc;
 use identity_client::IdentityClient;
@@ -776,35 +772,6 @@ mod tests {
     #[cfg(unix)]
     static SETTINGS_DEFAULT_CERT: &str =
         "../edgelet-docker/test/linux/sample_settings_default_cert.yaml";
-
-    #[cfg(windows)]
-    static GOOD_SETTINGS: &str = "../edgelet-docker/test/windows/sample_settings.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS1: &str = "test/windows/sample_settings1.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS2: &str = "test/windows/sample_settings2.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_DPS_TPM1: &str = "test/windows/sample_settings.dps.tpm.1.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_DPS_SYMM_KEY: &str = "test/windows/sample_settings.dps.symm.key.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_NESTED_EDGE: &str = "test/windows/sample_settings.nested.edge.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_DPS_DEFAULT: &str =
-        "../edgelet-docker/test/windows/sample_settings.dps.default.yaml";
-    #[cfg(windows)]
-    static EMPTY_CONNECTION_STRING_SETTINGS: &str =
-        "../edgelet-docker/test/windows/bad_sample_settings.cs.3.yaml";
-    #[cfg(windows)]
-    static DEFAULT_CONNECTION_STRING_SETTINGS: &str =
-        "../edgelet-docker/test/windows/bad_sample_settings.cs.4.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_EXTERNAL: &str =
-        "../edgelet-docker/test/windows/sample_settings.external.1.yaml";
-    #[cfg(windows)]
-    static SETTINGS_DEFAULT_CERT: &str =
-        "../edgelet-docker/test/windows/sample_settings_default_cert.yaml";
-
     #[derive(Clone, Copy, Debug, Fail)]
     pub struct Error;
 

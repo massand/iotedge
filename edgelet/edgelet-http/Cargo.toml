@@ -37,14 +37,6 @@ nix = "0.14"
 scopeguard = "0.3.3"
 tokio-uds = "0.2"
 
-[target.'cfg(windows)'.dependencies]
-hyper-named-pipe = { path = "../hyper-named-pipe" }
-hyperlocal-windows = { git = "https://github.com/Azure/hyperlocal-windows" }
-mio-uds-windows = { git = "https://github.com/Azure/mio-uds-windows.git" }
-tokio-named-pipe = { path = "../tokio-named-pipe" }
-tokio-uds-windows = { git = "https://github.com/Azure/tokio-uds-windows.git" }
-winapi = { version = "0.3.5", features = ["winsock2"] }
-
 [dev-dependencies]
 lazy_static = "1.0"
 tempfile = "3"

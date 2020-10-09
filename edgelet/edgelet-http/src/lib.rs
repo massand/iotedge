@@ -19,8 +19,6 @@ use std::fmt::{Debug, Formatter};
 use std::net;
 #[cfg(target_os = "linux")]
 use std::os::unix::io::FromRawFd;
-#[cfg(windows)]
-use std::sync::Arc;
 #[cfg(unix)]
 use std::sync::Arc;
 
@@ -70,8 +68,6 @@ use crate::pid::PidService;
 use crate::util::incoming::Incoming;
 
 const HTTP_SCHEME: &str = "http";
-#[cfg(windows)]
-const PIPE_SCHEME: &str = "npipe";
 const TCP_SCHEME: &str = "tcp";
 #[cfg(target_os = "linux")]
 const FD_SCHEME: &str = "fd";

@@ -553,7 +553,6 @@ dependencies = [
  "typed-headers",
  "url 2.1.1",
  "url_serde",
- "winapi 0.3.9",
 ]
 
 [[package]]
@@ -568,15 +567,12 @@ dependencies = [
  "failure",
  "futures",
  "hyper 0.12.35",
- "hyper-named-pipe",
  "hyper-proxy",
  "hyper-tls",
  "hyperlocal",
- "hyperlocal-windows",
  "lazy_static",
  "libc",
  "log",
- "mio-uds-windows",
  "native-tls",
  "nix 0.14.1",
  "openssl",
@@ -591,13 +587,10 @@ dependencies = [
  "tempdir",
  "tempfile",
  "tokio 0.1.22",
- "tokio-named-pipe",
  "tokio-tls",
  "tokio-uds",
- "tokio-uds-windows",
  "typed-headers",
  "url 2.1.1",
- "winapi 0.3.9",
 ]
 
 [[package]]
@@ -663,11 +656,6 @@ dependencies = [
  "futures",
  "hyper 0.12.35",
  "hyperlocal",
- "hyperlocal-windows",
- "mio",
- "mio-named-pipes",
- "mio-uds-windows",
- "miow 0.3.5",
  "objekt",
  "serde",
  "serde_derive",
@@ -706,15 +694,6 @@ dependencies = [
  "log",
  "regex 1.3.9",
  "termcolor 1.1.0",
-]
-
-[[package]]
-name = "error-chain"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff511d5dc435d703f4971bc399647c9bc38e20cb41452e3b9feb4765419ed3f3"
-dependencies = [
- "backtrace",
 ]
 
 [[package]]
@@ -1099,23 +1078,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hyper-named-pipe"
-version = "0.1.0"
-dependencies = [
- "edgelet-test-utils",
- "edgelet-utils",
- "failure",
- "futures",
- "hex",
- "hyper 0.12.35",
- "rand 0.4.6",
- "tokio 0.1.22",
- "tokio-named-pipe",
- "typed-headers",
- "url 1.7.2",
-]
-
-[[package]]
 name = "hyper-proxy"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1157,20 +1119,6 @@ dependencies = [
  "tokio 0.1.22",
  "tokio-io",
  "tokio-uds",
-]
-
-[[package]]
-name = "hyperlocal-windows"
-version = "0.1.0"
-source = "git+https://github.com/Azure/hyperlocal-windows#2bd432bbbfb5b1cf38429733dd9a593c7b97a850"
-dependencies = [
- "futures",
- "hex",
- "hyper 0.12.35",
- "mio-uds-windows",
- "tokio 0.1.22",
- "tokio-io",
- "tokio-uds-windows",
 ]
 
 [[package]]
@@ -1259,7 +1207,6 @@ dependencies = [
  "termcolor 0.3.6",
  "tokio 0.1.22",
  "url 2.1.1",
- "winapi 0.3.9",
  "zip",
 ]
 
@@ -1272,7 +1219,6 @@ dependencies = [
  "futures",
  "hyper 0.12.35",
  "hyperlocal",
- "hyperlocal-windows",
  "management",
  "serde_json",
  "tokio 0.1.22",
@@ -1326,16 +1272,6 @@ dependencies = [
  "tokio-signal",
  "url 2.1.1",
  "url_serde",
- "win-logger",
- "winapi 0.3.9",
- "windows-service",
-]
-
-[[package]]
-name = "iotedged-eventlog-messages"
-version = "0.1.0"
-dependencies = [
- "winreg",
 ]
 
 [[package]]
@@ -1379,12 +1315,6 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
-
-[[package]]
-name = "lazycell"
-version = "1.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
@@ -1510,22 +1440,10 @@ dependencies = [
  "kernel32-sys",
  "libc",
  "log",
- "miow 0.2.1",
+ "miow",
  "net2",
  "slab",
  "winapi 0.2.8",
-]
-
-[[package]]
-name = "mio-named-pipes"
-version = "0.1.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0840c1c50fd55e521b247f949c241c9997709f23bd7f023b9762cd561e935656"
-dependencies = [
- "log",
- "mio",
- "miow 0.3.5",
- "winapi 0.3.9",
 ]
 
 [[package]]
@@ -1540,21 +1458,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mio-uds-windows"
-version = "0.1.0"
-source = "git+https://github.com/Azure/mio-uds-windows.git#87a4a9970e668fdbe9205f4039967e175182c70e"
-dependencies = [
- "iovec",
- "kernel32-sys",
- "lazycell",
- "log",
- "mio",
- "miow 0.2.1",
- "winapi 0.2.8",
- "ws2_32-sys",
-]
-
-[[package]]
 name = "miow"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1564,16 +1467,6 @@ dependencies = [
  "net2",
  "winapi 0.2.8",
  "ws2_32-sys",
-]
-
-[[package]]
-name = "miow"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07b88fb9795d4d36d62a012dfbf49a8f5cf12751f36d31a9dbe66d528e58979e"
-dependencies = [
- "socket2",
- "winapi 0.3.9",
 ]
 
 [[package]]
@@ -2610,18 +2503,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tokio-named-pipe"
-version = "0.1.0"
-dependencies = [
- "futures",
- "mio",
- "mio-named-pipes",
- "rand 0.4.6",
- "tokio 0.1.22",
- "winapi 0.3.9",
-]
-
-[[package]]
 name = "tokio-reactor"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2750,21 +2631,6 @@ dependencies = [
  "mio",
  "mio-uds",
  "tokio-codec",
- "tokio-io",
- "tokio-reactor",
-]
-
-[[package]]
-name = "tokio-uds-windows"
-version = "0.1.0"
-source = "git+https://github.com/Azure/tokio-uds-windows.git#b689a914dbaa905f359f89200c01fed7a6c8df3f"
-dependencies = [
- "bytes 0.4.12",
- "futures",
- "iovec",
- "log",
- "mio",
- "mio-uds-windows",
  "tokio-io",
  "tokio-reactor",
 ]
@@ -2982,22 +2848,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a143597ca7c7793eff794def352d41792a93c481eb1042423ff7ff72ba2c31f"
 
 [[package]]
-name = "widestring"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a212922ea58fbf5044f83663aa4fc6281ff890f1fd7546c0c3f52f5290831781"
-
-[[package]]
-name = "win-logger"
-version = "0.1.0"
-dependencies = [
- "edgelet-utils",
- "failure",
- "log",
- "winapi 0.3.9",
-]
-
-[[package]]
 name = "winapi"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3045,27 +2895,6 @@ name = "wincolor"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eeb06499a3a4d44302791052df005d5232b927ed1a9658146d842165c4de7767"
-dependencies = [
- "winapi 0.3.9",
-]
-
-[[package]]
-name = "windows-service"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51cb08429e18f787748343122610b09f50c79f8034627e57faacf37582a709ec"
-dependencies = [
- "bitflags",
- "error-chain",
- "widestring",
- "winapi 0.3.9",
-]
-
-[[package]]
-name = "winreg"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a27a759395c1195c4cc5cda607ef6f8f6498f64e78f7900f5de0a127a424704a"
 dependencies = [
  "winapi 0.3.9",
 ]

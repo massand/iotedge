@@ -30,9 +30,6 @@ edgelet-utils = { path = "../edgelet-utils" }
 [target.'cfg(not(windows))'.dependencies]
 libc = "0.2.66"
 
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["sysinfoapi"] }
-
 [dev_dependencies]
 config = { version = "0.9", default-features = false, features = ["json", "yaml"] }
 json-patch = "0.2.5"

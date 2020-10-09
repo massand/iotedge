@@ -34,7 +34,6 @@ use checks::{
     ContainerEngineIsMoby, ContainerEngineLogrotate, ContainerLocalTime, EdgeAgentStorageMounted,
     EdgeHubStorageMounted, HostConnectDpsEndpoint, HostLocalTime, Hostname,
     IdentityCertificateExpiry, IotedgedVersion, WellFormedConfig, WellFormedConnectionString,
-    WindowsHostVersion,
 };
 
 pub struct Check {

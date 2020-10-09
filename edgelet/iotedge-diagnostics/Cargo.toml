@@ -18,6 +18,3 @@ management = { path = "../management" }
 
 [target.'cfg(unix)'.dependencies]
 hyperlocal = "0.6"
-
-[target.'cfg(windows)'.dependencies]
-hyperlocal-windows = { git = "https://github.com/Azure/hyperlocal-windows" }

@@ -20,9 +20,6 @@ use crate::error::{Error, ErrorKind};
 #[cfg(unix)]
 pub const DEFAULTS: &str = include_str!("../config/unix/default.yaml");
 
-#[cfg(windows)]
-pub const DEFAULTS: &str = include_str!("../config/windows/default.yaml");
-
 /// This is the key for the docker network Id.
 const EDGE_NETWORKID_KEY: &str = "NetworkId";
 
@@ -360,71 +357,6 @@ mod tests {
         "test/linux/bad_sample_settings.dyn.repro.yaml";
     #[cfg(unix)]
     static GOOD_SETTINGS_TLS: &str = "test/linux/sample_settings.tls.yaml";
-
-    #[cfg(windows)]
-    static GOOD_SETTINGS: &str = "test/windows/sample_settings.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_MANUAL_CS_AUTH: &str = "test/windows/sample_settings.manual.auth.cs.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS: &str = "test/windows/bad_sample_settings.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_MANUAL_CS2: &str = "test/windows/bad_sample_settings.cs.2.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_MANUAL_CS3: &str = "test/windows/bad_sample_settings.cs.3.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_DPS_SYM_KEY: &str = "test/windows/sample_settings.dps.sym.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_CASE_SENSITIVE: &str = "test/windows/case_sensitive.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_DPS_TPM: &str = "test/windows/sample_settings.dps.tpm.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_DPS_DEFAULT: &str = "test/windows/sample_settings.dps.default.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_DPS_TPM: &str = "test/windows/bad_sample_settings.dps.tpm.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_DPS_DEFAULT: &str = "test/windows/bad_sample_settings.dps.default.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_DPS_SYM_KEY: &str = "test/windows/bad_sample_settings.dps.sym.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_DPS_X5091: &str = "test/windows/bad_settings.dps.x509.1.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_DPS_X5092: &str = "test/windows/bad_settings.dps.x509.2.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_DPS_X5093: &str = "test/windows/bad_settings.dps.x509.3.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_DPS_X5094: &str = "test/windows/bad_settings.dps.x509.4.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_MANUAL_CS_AUTH1: &str = "test/windows/bad_settings.manual.cs.1.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_MANUAL_CS_AUTH2: &str = "test/windows/bad_settings.manual.cs.2.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_MANUAL_CS_AUTH3: &str = "test/windows/bad_settings.manual.cs.3.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_MANUAL_CS_AUTH4: &str = "test/windows/bad_settings.manual.cs.4.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_MANUAL_X509_AUTH1: &str = "test/windows/bad_settings.manual.x509.1.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_MANUAL_X509_AUTH2: &str = "test/windows/bad_settings.manual.x509.2.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_MANUAL_X509_AUTH3: &str = "test/windows/bad_settings.manual.x509.3.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_MANUAL_X509_AUTH4: &str = "test/windows/bad_settings.manual.x509.4.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_MANUAL_X509_AUTH5: &str = "test/windows/bad_settings.manual.x509.5.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_EXTERNAL1: &str = "test/windows/sample_settings.external.1.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_EXTERNAL2: &str = "test/windows/sample_settings.external.2.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_NETWORK: &str = "test/windows/sample_settings.network.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_DYNAMIC_REPROVISIONING: &str =
-        "test/windows/sample_settings.dyn.repro.yaml";
-    #[cfg(windows)]
-    static BAD_SETTINGS_DYNAMIC_REPROVISIONING: &str =
-        "test/windows/bad_sample_settings.dyn.repro.yaml";
-    #[cfg(windows)]
-    static GOOD_SETTINGS_TLS: &str = "test/windows/sample_settings.tls.yaml";
 
     fn unwrap_manual_provisioning(p: &ProvisioningType) -> String {
         match p {

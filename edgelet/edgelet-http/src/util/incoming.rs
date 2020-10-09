@@ -3,14 +3,10 @@
 use std::io;
 
 use futures::{Poll, Stream};
-#[cfg(windows)]
-use tokio::net::TcpListener;
 #[cfg(unix)]
 use tokio::net::TcpListener;
 #[cfg(unix)]
 use tokio_uds::UnixListener;
-#[cfg(windows)]
-use tokio_uds_windows::UnixListener;
 
 use crate::util::{IncomingSocketAddr, StreamSelector};
 
