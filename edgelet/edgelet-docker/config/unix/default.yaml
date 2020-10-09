@@ -29,3 +29,4 @@ endpoints:
   aziot_keyd: "unix:///var/run/aziot/keyd.sock"
   aziot_certd: "unix:///var/run/aziot/certd.sock"
   aziot_identityd: "unix:///var/run/aziot/identityd.sock"
+  

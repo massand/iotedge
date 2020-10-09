@@ -42,9 +42,6 @@ impl Handler<Parameters> for TrustBundleHandler
             .get_cert("iotedge-trust-bundle")
             .map_err(|_| Error::from(ErrorKind::GetIdentity))
             .and_then(|cert| -> Result<_, Error> {
-                // let cert = cert.pem().context(ErrorKind::EncryptionOperation(
-                //     EncryptionOperation::GetTrustBundle,
-                // ))?;
                 let cert = str::from_utf8(cert.as_ref())
                     .context(ErrorKind::EncryptionOperation(
                         EncryptionOperation::GetTrustBundle,

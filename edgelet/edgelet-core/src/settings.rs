@@ -757,7 +757,7 @@ where
 
 #[derive(Clone, Debug, PartialEq, serde_derive::Deserialize, serde_derive::Serialize)]
 pub struct Endpoints {
-	aziot_certd_uri: Url,
+    aziot_certd_uri: Url,
     aziot_keyd_uri: Url,
     aziot_identityd_uri: Url,
 }

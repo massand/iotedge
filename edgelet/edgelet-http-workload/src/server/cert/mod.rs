@@ -143,9 +143,20 @@ fn generate_key_and_csr(
 
     csr.set_pubkey(&pubkey).context(context.clone())?;
 
-    let client_extension =
-        openssl::x509::extension::ExtendedKeyUsage::new().server_auth().build()
-        .context(context.clone())?;
+    let client_extension = match props.certificate_type() {
+        edgelet_core::CertificateType::Client => {
+            let ext = openssl::x509::extension::ExtendedKeyUsage::new().client_auth().build()
+                .map_err(|_| Error::from(ErrorKind::InvalidCertificateType))?;
+            ext
+        }
+        edgelet_core::CertificateType::Server => {
+            let ext = openssl::x509::extension::ExtendedKeyUsage::new().server_auth().build()
+                .map_err(|_| Error::from(ErrorKind::InvalidCertificateType))?;
+            ext
+        }
+        _ => { return Err(Error::from(ErrorKind::InvalidCertificateType)) }
+    };
+
     let mut extensions =
         openssl::stack::Stack::new()
         .context(context.clone())?;

@@ -27,8 +27,6 @@ pub struct CertificateClient {
 
 impl CertificateClient {
     pub fn new(api_version: aziot_cert_common_http::ApiVersion, url: &url::Url) -> Self {
-        //TODO: Read IS endpoint configuration
-        
         let client = Client::builder()
             .build(UrlConnector::new(
                 &url).expect("Hyper client"));

@@ -419,7 +419,6 @@ where
     let (mgmt_stop_and_reprovision_tx, mgmt_stop_and_reprovision_rx) = mpsc::unbounded();
     let (work_tx, work_rx) = oneshot::channel();
 
-    //TODO: Create CSR with props by getting device CA and using that CA as issuer for TLS cert
     let edgelet_cert_props = CertificateProperties::new(
         settings.certificates().auto_generated_ca_lifetime_seconds(),
         IOTEDGED_TLS_COMMONNAME.to_string(),
