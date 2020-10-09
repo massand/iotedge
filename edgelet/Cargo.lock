@@ -1266,7 +1266,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "signal-future",
  "tempdir",
  "tokio 0.1.22",
  "tokio-signal",
@@ -2157,14 +2156,6 @@ dependencies = [
  "byte-tools",
  "digest",
  "fake-simd",
-]
-
-[[package]]
-name = "signal-future"
-version = "0.1.0"
-dependencies = [
- "futures",
- "tokio 0.1.22",
 ]
 
 [[package]]

@@ -33,7 +33,6 @@ edgelet-http = { path = "../edgelet-http" }
 edgelet-http-mgmt = { path = "../edgelet-http-mgmt" }
 edgelet-http-workload = { path = "../edgelet-http-workload" }
 edgelet-utils = { path = "../edgelet-utils" }
-signal-future = { path = "../signal-future" }
 aziot-cert-common-http = { path = "../../aziot/cert/aziot-cert-common-http" }
 aziot-identity-common = { path = "../../aziot/identity/aziot-identity-common" }
 aziot-identity-common-http = { path = "../../aziot/identity/aziot-identity-common-http" }
