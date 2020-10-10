@@ -50,9 +50,9 @@ use sha2::{Digest, Sha256};
 use url::Url;
 
 use edgelet_core::crypto::{
-    Activate, CreateCertificate, Decrypt, DerivedKeyStore, Encrypt, GetDeviceIdentityCertificate,
-    GetHsmVersion, GetIssuerAlias, GetTrustBundle, KeyIdentity, KeyStore, MakeRandom,
-    MasterEncryptionKey, MemoryKey, MemoryKeyStore, Sign, Signature, SignatureAlgorithm,
+    Activate, CreateCertificate, GetDeviceIdentityCertificate,
+    GetHsmVersion, GetIssuerAlias, KeyIdentity, KeyStore,
+    Sign, Signature, SignatureAlgorithm,
     IOTEDGED_CA_ALIAS,
 };
 use edgelet_core::{
@@ -694,13 +694,12 @@ mod tests {
     };
     use edgelet_docker::{DockerConfig, DockerModuleRuntime, Settings};
     use edgelet_test_utils::cert::TestCert;
-    use edgelet_test_utils::crypto::TestHsm;
     use edgelet_test_utils::module::{TestModule, TestProvisioningResult, TestRuntime};
 
     use super::{
-        env, signal, CertificateIssuer, CertificateProperties, CreateCertificate, Decrypt, Digest, Encrypt,
+        env, signal, CertificateIssuer, CertificateProperties, CreateCertificate, Digest,
         ErrorKind, ExternalProvisioningErrorReason, Fail, File, Future, GetIssuerAlias,
-        InitializeErrorReason, Main, MakeModuleRuntime, MakeRandom, MasterEncryptionKey,
+        InitializeErrorReason, Main, MakeModuleRuntime,
         RuntimeSettings, Sha256, Uri, Write,
         EDGE_HYBRID_IDENTITY_MASTER_KEY_FILENAME, EDGE_HYBRID_IDENTITY_MASTER_KEY_IV_FILENAME,
         IDENTITY_MASTER_KEY_LEN_BYTES, IOTEDGED_CRYPTO_IV_LEN_BYTES,
