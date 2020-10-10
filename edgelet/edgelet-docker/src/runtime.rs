@@ -1055,7 +1055,7 @@ mod tests {
     use serde_json::{self, json, Value as JsonValue};
 
     use edgelet_core::{
-        Certificates, Connect, Listen, ModuleRegistry, ModuleTop, Provisioning, RuntimeSettings,
+        Connect, Listen, ModuleRegistry, ModuleTop, RuntimeSettings,
         WatchdogSettings, Endpoints,
     };
 
@@ -1322,10 +1322,6 @@ mod tests {
     impl RuntimeSettings for TestSettings {
         type Config = TestConfig;
 
-        fn provisioning(&self) -> &Provisioning {
-            unimplemented!()
-        }
-
         fn agent(&self) -> &ModuleSpec<Self::Config> {
             unimplemented!()
         }
@@ -1351,10 +1347,6 @@ mod tests {
         }
 
         fn homedir(&self) -> &Path {
-            unimplemented!()
-        }
-
-        fn certificates(&self) -> &Certificates {
             unimplemented!()
         }
 

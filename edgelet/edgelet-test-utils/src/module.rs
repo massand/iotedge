@@ -5,9 +5,9 @@ use std::path::Path;
 use std::time::Duration;
 
 use edgelet_core::{
-    AuthId, Authenticator, Certificates, Connect, DiskInfo, Listen, LogOptions,
+    AuthId, Authenticator, Connect, DiskInfo, Listen, LogOptions,
     MakeModuleRuntime, Module, ModuleRegistry, ModuleRuntime, ModuleRuntimeState, ModuleSpec,
-    Provisioning, ProvisioningResult, RuntimeSettings, SystemInfo, SystemResources,
+    ProvisioningResult, RuntimeSettings, SystemInfo, SystemResources,
     WatchdogSettings, Endpoints,
 };
 use failure::Fail;
@@ -83,10 +83,6 @@ impl TestSettings {
 impl RuntimeSettings for TestSettings {
     type Config = TestConfig;
 
-    fn provisioning(&self) -> &Provisioning {
-        unimplemented!()
-    }
-
     fn agent(&self) -> &ModuleSpec<Self::Config> {
         unimplemented!()
     }
@@ -112,10 +108,6 @@ impl RuntimeSettings for TestSettings {
     }
 
     fn homedir(&self) -> &Path {
-        unimplemented!()
-    }
-
-    fn certificates(&self) -> &Certificates {
         unimplemented!()
     }
 

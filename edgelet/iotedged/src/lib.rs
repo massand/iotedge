@@ -56,11 +56,11 @@ use edgelet_core::crypto::{
     IOTEDGED_CA_ALIAS,
 };
 use edgelet_core::{
-    AttestationMethod, Authenticator, Certificate, CertificateIssuer, CertificateProperties,
-    CertificateType, Dps, MakeModuleRuntime, ManualAuthMethod, Module, ModuleRuntime,
+    Authenticator, Certificate, CertificateIssuer, CertificateProperties,
+    CertificateType, MakeModuleRuntime, Module, ModuleRuntime,
     ModuleRuntimeErrorReason, ModuleSpec, ProvisioningResult as CoreProvisioningResult,
-    ProvisioningType, RuntimeSettings, SymmetricKeyAttestationInfo, TpmAttestationInfo,
-    WorkloadConfig, X509AttestationInfo,
+    RuntimeSettings, 
+    WorkloadConfig, 
 };
 use edgelet_http::certificate_manager::CertificateManager;
 use edgelet_http::client::{Client as HttpClient, ClientImpl};
@@ -254,78 +254,64 @@ where
                 InitializeErrorReason::CreateCacheDirectory,
             ))?;
 
-        info!("Obtaining edge device provisioning data...");
-        
-        let url = settings.endpoints().aziot_identityd_uri().clone();
-        let client = Arc::new(Mutex::new(identity_client::IdentityClient::new(aziot_identity_common_http::ApiVersion::V2020_09_01, &url)));
-
-        let device_info = get_device_info(client)
-        .map_err(|e| Error::from(e.context(ErrorKind::Initialize(InitializeErrorReason::DpsProvisioningClient))))
-        .map(|(hub_name, device_id)| {
-            debug!("{}:{}", hub_name, device_id);
-            (hub_name, device_id)
-        });
-
-        let (hub, device_id) = tokio_runtime
-            .block_on(device_info)
-            .context(ErrorKind::Initialize(
-                InitializeErrorReason::DpsProvisioningClient,
-            ))?;
-
-        info!("Finished provisioning edge device.");
-
         let runtime = init_runtime::<M>(
             settings.clone(),
             &mut tokio_runtime,
         )?;
 
-        // Normally iotedged will stop all modules when it shuts down. But if it crashed,
-        // modules will continue to run. On Linux systems where iotedged is responsible for
-        // creating/binding the socket (e.g., CentOS 7.5, which uses systemd but does not
-        // support systemd socket activation), modules will be left holding stale file
-        // descriptors for the workload and management APIs and calls on these APIs will
-        // begin to fail. Resilient modules should be able to deal with this, but we'll
-        // restart all modules to ensure a clean start.
-        const STOP_TIME: Duration = Duration::from_secs(30);
-        info!("Stopping all modules...");
-        tokio_runtime
-            .block_on(runtime.stop_all(Some(STOP_TIME)))
-            .context(ErrorKind::Initialize(
-                InitializeErrorReason::StopExistingModules
-            ))?;
-        info!("Finished stopping modules.");
-
-        // if force_reprovision ||
-        //     (provisioning_result.reconfigure() != ReprovisioningStatus::DeviceDataNotUpdated) {
-        //     // If this device was re-provisioned and the device key was updated it causes
-        //     // module keys to be obsoleted in IoTHub from the previous provisioning. We therefore
-        //     // delete all containers after each DPS provisioning run so that IoTHub can be updated
-        //     // with new module keys when the deployment is executed by EdgeAgent.
-        //     info!(
-        //         "Reprovisioning status {:?} will trigger reconfiguration of modules.",
-        //         provisioning_result.reconfigure()
-        //     );
+        // This "do-while" loop runs until a StartApiReturnStatus::Shutdown
+        // is received. If the TLS cert needs a restart, we will loop again.
+        loop {
+            info!("Obtaining edge device provisioning data...");
         
-        //TODO: Removing all modules on every restart for now.
-        //      When should module runtime remove containers? Should it be based on some cached 
-        //      provisioning result?
+            let url = settings.endpoints().aziot_identityd_uri().clone();
+            let client = Arc::new(Mutex::new(identity_client::IdentityClient::new(aziot_identity_common_http::ApiVersion::V2020_09_01, &url)));
+
+            let device_info = get_device_info(client)
+            .map_err(|e| Error::from(e.context(ErrorKind::Initialize(InitializeErrorReason::DpsProvisioningClient))))
+            .map(|(hub_name, device_id)| {
+                debug!("{}:{}", hub_name, device_id);
+                (hub_name, device_id)
+            });
+
+            let (hub, device_id) = tokio_runtime
+                .block_on(device_info)
+                .context(ErrorKind::Initialize(
+                    InitializeErrorReason::DpsProvisioningClient,
+                ))?;
+
+            info!("Finished provisioning edge device.");
+            
+            // Normally iotedged will stop all modules when it shuts down. But if it crashed,
+            // modules will continue to run. On Linux systems where iotedged is responsible for
+            // creating/binding the socket (e.g., CentOS 7.5, which uses systemd but does not
+            // support systemd socket activation), modules will be left holding stale file
+            // descriptors for the workload and management APIs and calls on these APIs will
+            // begin to fail. Resilient modules should be able to deal with this, but we'll
+            // restart all modules to ensure a clean start.
+            const STOP_TIME: Duration = Duration::from_secs(30);
+            info!("Stopping all modules...");
+            tokio_runtime
+                .block_on(runtime.stop_all(Some(STOP_TIME)))
+                .context(ErrorKind::Initialize(
+                    InitializeErrorReason::StopExistingModules
+                ))?;
+            info!("Finished stopping modules.");
+
             tokio_runtime
                 .block_on(runtime.remove_all())
                 .context(ErrorKind::Initialize(
                     InitializeErrorReason::RemoveExistingModules,
                 ))?;
-        // }
 
-        let cfg = WorkloadData::new(
-            hub,
-            settings.parent_hostname().map(String::from),
-            device_id,
-            IOTEDGE_ID_CERT_MAX_DURATION_SECS,
-            IOTEDGE_SERVER_CERT_MAX_DURATION_SECS,
-        );
-        // This "do-while" loop runs until a StartApiReturnStatus::Shutdown
-        // is received. If the TLS cert needs a restart, we will loop again.
-        loop {
+            let cfg = WorkloadData::new(
+                hub,
+                settings.parent_hostname().map(String::from),
+                device_id,
+                IOTEDGE_ID_CERT_MAX_DURATION_SECS,
+                IOTEDGE_SERVER_CERT_MAX_DURATION_SECS,
+            );
+            
             let (code, should_reprovision) = start_api::<_, _, M>(
                 &settings,
                 &runtime,
@@ -333,30 +319,6 @@ where
                 make_shutdown_signal(),
                 &mut tokio_runtime,
             )?;
-
-            if should_reprovision {
-                let url = settings.endpoints().aziot_identityd_uri().clone();
-
-                let client = identity_client::IdentityClient::new(aziot_identity_common_http::ApiVersion::V2020_09_01, &url);
-                let _device = client.get_device()
-                .and_then(move |identity| {
-                    debug!("{:?}", identity);
-                    Ok(())
-                });
-
-                tokio_runtime
-                    .block_on(_device)
-                    .context(ErrorKind::Initialize(
-                        InitializeErrorReason::DpsProvisioningClient,
-                    ))?;
-
-                // Return an error here to let the daemon exit with an error code.
-                // This will make `systemd` restart the daemon which will re-execute the
-                // provisioning flow and if the device has been re-provisioned, the daemon
-                // will configure itself with the new provisioning information as part of
-                // that flow.
-                return Err(Error::from(ErrorKind::DeviceDeprovisioned))
-            }
 
             if code != StartApiReturnStatus::Restart {
                 break;
@@ -416,7 +378,7 @@ where
     let (work_tx, work_rx) = oneshot::channel();
 
     let edgelet_cert_props = CertificateProperties::new(
-        settings.certificates().auto_generated_ca_lifetime_seconds(),
+        0,
         IOTEDGED_TLS_COMMONNAME.to_string(),
         CertificateType::Server,
         "iotedge-tls".to_string(),
@@ -456,7 +418,7 @@ where
                 Err(((), _)) => Err(Error::from(ErrorKind::ManagementService)),
             });
 
-    let mgmt_stop_and_reprovision_signaled = if settings.provisioning().dynamic_reprovisioning() {
+    let mgmt_stop_and_reprovision_signaled = if true {
         futures::future::Either::B(mgmt_stop_and_reprovision_signaled)
     } else {
         futures::future::Either::A(future::empty())

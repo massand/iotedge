@@ -48,10 +48,9 @@ pub use module::{
 pub use network::{Ipam, IpamConfig, MobyNetwork, Network};
 pub use parse_since::parse_since;
 pub use settings::{
-    AttestationMethod, Certificates, Connect, Dps, External, Listen, Manual, ManualAuthMethod,
-    ManualDeviceConnectionString, ManualX509Auth, Protocol, Provisioning, ProvisioningType,
-    RetryLimit, RuntimeSettings, Settings, SymmetricKeyAttestationInfo, TpmAttestationInfo,
-    WatchdogSettings, X509AttestationInfo, Endpoints,
+    Connect, Listen, Protocol,
+    RetryLimit, RuntimeSettings, Settings,
+    WatchdogSettings, Endpoints,
 };
 pub use workload::WorkloadConfig;
 
