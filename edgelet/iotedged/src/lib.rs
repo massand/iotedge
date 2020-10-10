@@ -50,9 +50,9 @@ use sha2::{Digest, Sha256};
 use url::Url;
 
 use edgelet_core::crypto::{
-    Activate, CreateCertificate, GetDeviceIdentityCertificate,
-    GetHsmVersion, GetIssuerAlias, KeyIdentity, KeyStore,
-    Sign, Signature, SignatureAlgorithm,
+    CreateCertificate, GetDeviceIdentityCertificate,
+    GetIssuerAlias,
+    Signature,
     IOTEDGED_CA_ALIAS,
 };
 use edgelet_core::{

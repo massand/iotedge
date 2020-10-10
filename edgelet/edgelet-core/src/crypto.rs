@@ -1,7 +1,5 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-use std::fmt;
-
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
 use consistenttime::ct_u8_slice_eq;
@@ -11,57 +9,6 @@ use crate::error::Error;
 
 /// This is the issuer alias used when `CertificateIssuer::DefaultCa` is provided by the caller
 pub const IOTEDGED_CA_ALIAS: &str = "iotedged-workload-ca";
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum KeyIdentity {
-    Device,
-    Module(String),
-}
-
-impl fmt::Display for KeyIdentity {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            KeyIdentity::Device => write!(f, "Device"),
-            KeyIdentity::Module(m) => write!(f, "Module({})", m),
-        }
-    }
-}
-
-pub trait GetHsmVersion {
-    fn get_version(&self) -> Result<String, Error>;
-}
-
-pub trait Activate {
-    type Key: Sign;
-
-    fn activate_identity_key<B: AsRef<[u8]>>(
-        &mut self,
-        identity: KeyIdentity,
-        key_name: String,
-        key: B,
-    ) -> Result<(), Error>;
-}
-
-pub trait Sign {
-    type Signature: Signature;
-
-    fn sign(
-        &self,
-        signature_algorithm: SignatureAlgorithm,
-        data: &[u8],
-    ) -> Result<Self::Signature, Error>;
-}
-
-pub trait KeyStore {
-    type Key: Sign;
-
-    fn get(&self, identity: &KeyIdentity, key_name: &str) -> Result<Self::Key, Error>;
-}
-
-#[derive(Clone, Copy)]
-pub enum SignatureAlgorithm {
-    HMACSHA256,
-}
 
 pub trait Signature {
     fn as_bytes(&self) -> &[u8];
