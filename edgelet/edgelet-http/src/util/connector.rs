@@ -137,7 +137,6 @@ impl Connect for UrlConnector {
 
 #[cfg(test)]
 mod tests {
-    use tempfile::NamedTempFile;
     use url::Url;
 
     use super::UrlConnector;
@@ -159,14 +158,6 @@ mod tests {
         };
         
         assert!(err.to_string().contains("Socket file could not be found"));
-    }
-
-    #[test]
-    fn create_uds_succeeds() {
-        let file = NamedTempFile::new().unwrap();
-        let mut url = Url::from_file_path(file.path()).unwrap();
-        url.set_scheme("unix").unwrap();
-        let _connector = UrlConnector::new(&url).unwrap();
     }
 
     #[test]

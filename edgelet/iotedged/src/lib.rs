@@ -707,32 +707,7 @@ mod tests {
     use docker::models::ContainerCreateBody;
 
     #[cfg(unix)]
-    static GOOD_SETTINGS: &str = "../edgelet-docker/test/linux/sample_settings.yaml";
-    #[cfg(unix)]
-    static GOOD_SETTINGS1: &str = "test/linux/sample_settings1.yaml";
-    #[cfg(unix)]
-    static GOOD_SETTINGS2: &str = "test/linux/sample_settings2.yaml";
-    #[cfg(unix)]
-    static GOOD_SETTINGS_DPS_TPM1: &str = "test/linux/sample_settings.dps.tpm.1.yaml";
-    #[cfg(unix)]
-    static GOOD_SETTINGS_DPS_SYMM_KEY: &str = "test/linux/sample_settings.dps.symm.key.yaml";
-    #[cfg(unix)]
     static GOOD_SETTINGS_NESTED_EDGE: &str = "test/linux/sample_settings.nested.edge.yaml";
-    #[cfg(unix)]
-    static GOOD_SETTINGS_DPS_DEFAULT: &str =
-        "../edgelet-docker/test/linux/sample_settings.dps.default.yaml";
-    #[cfg(unix)]
-    static EMPTY_CONNECTION_STRING_SETTINGS: &str =
-        "../edgelet-docker/test/linux/bad_sample_settings.cs.3.yaml";
-    #[cfg(unix)]
-    static DEFAULT_CONNECTION_STRING_SETTINGS: &str =
-        "../edgelet-docker/test/linux/bad_sample_settings.cs.4.yaml";
-    #[cfg(unix)]
-    static GOOD_SETTINGS_EXTERNAL: &str =
-        "../edgelet-docker/test/linux/sample_settings.external.1.yaml";
-    #[cfg(unix)]
-    static SETTINGS_DEFAULT_CERT: &str =
-        "../edgelet-docker/test/linux/sample_settings_default_cert.yaml";
     #[derive(Clone, Copy, Debug, Fail)]
     pub struct Error;
 
@@ -746,32 +721,6 @@ mod tests {
         // Tests that call Main::new cannot run in parallel because they initialize hsm-sys
         // (via hsm_client_crypto_init) which is not thread-safe.
         static ref LOCK: Mutex<()> = Mutex::new(());
-    }
-
-    #[test]
-    fn default_settings_raise_load_error() {
-        let _guard = LOCK.lock().unwrap();
-
-        let settings = Settings::new(Path::new(DEFAULT_CONNECTION_STRING_SETTINGS)).unwrap();
-        let main = Main::<DockerModuleRuntime>::new(settings);
-        let result = main.run_until(signal::shutdown);
-        match result.unwrap_err().kind() {
-            ErrorKind::Initialize(InitializeErrorReason::LoadSettings) => (),
-            kind => panic!("Expected `LoadSettings` but got {:?}", kind),
-        }
-    }
-
-    #[test]
-    fn empty_connection_string_raises_load_error() {
-        let _guard = LOCK.lock().unwrap();
-
-        let settings = Settings::new(Path::new(EMPTY_CONNECTION_STRING_SETTINGS)).unwrap();
-        let main = Main::<DockerModuleRuntime>::new(settings);
-        let result = main.run_until(signal::shutdown);
-        match result.unwrap_err().kind() {
-            ErrorKind::Initialize(InitializeErrorReason::LoadSettings) => (),
-            kind => panic!("Expected `LoadSettings` but got {:?}", kind),
-        }
     }
 
     #[test]

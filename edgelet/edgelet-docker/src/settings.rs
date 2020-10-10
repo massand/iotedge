@@ -285,42 +285,9 @@ mod tests {
     #[cfg(unix)]
     static BAD_SETTINGS: &str = "test/linux/bad_sample_settings.yaml";
     #[cfg(unix)]
-    static BAD_SETTINGS_MANUAL_CS2: &str = "test/linux/bad_sample_settings.cs.2.yaml";
-    #[cfg(unix)]
     static GOOD_SETTINGS_CASE_SENSITIVE: &str = "test/linux/case_sensitive.yaml";
     #[cfg(unix)]
-    static BAD_SETTINGS_DPS_TPM: &str = "test/linux/bad_sample_settings.dps.tpm.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_DPS_DEFAULT: &str = "test/linux/bad_sample_settings.dps.default.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_DPS_SYM_KEY: &str = "test/linux/bad_sample_settings.dps.sym.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_DPS_X5091: &str = "test/linux/bad_settings.dps.x509.1.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_DPS_X5092: &str = "test/linux/bad_settings.dps.x509.2.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_DPS_X5093: &str = "test/linux/bad_settings.dps.x509.3.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_DPS_X5094: &str = "test/linux/bad_settings.dps.x509.4.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_MANUAL_CS_AUTH1: &str = "test/linux/bad_settings.manual.cs.1.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_MANUAL_CS_AUTH3: &str = "test/linux/bad_settings.manual.cs.3.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_MANUAL_X509_AUTH1: &str = "test/linux/bad_settings.manual.x509.1.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_MANUAL_X509_AUTH2: &str = "test/linux/bad_settings.manual.x509.2.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_MANUAL_X509_AUTH3: &str = "test/linux/bad_settings.manual.x509.3.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_MANUAL_X509_AUTH4: &str = "test/linux/bad_settings.manual.x509.4.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_MANUAL_X509_AUTH5: &str = "test/linux/bad_settings.manual.x509.5.yaml";
-    #[cfg(unix)]
     static GOOD_SETTINGS_NETWORK: &str = "test/linux/sample_settings.network.yaml";
-    #[cfg(unix)]
-    static BAD_SETTINGS_DYNAMIC_REPROVISIONING: &str =
-        "test/linux/bad_sample_settings.dyn.repro.yaml";
     #[cfg(unix)]
     static GOOD_SETTINGS_TLS: &str = "test/linux/sample_settings.tls.yaml";
 
@@ -384,54 +351,6 @@ mod tests {
     #[test]
     fn bad_file_gets_error() {
         let settings = Settings::new(Path::new(BAD_SETTINGS));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_MANUAL_CS2));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_DPS_DEFAULT));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_DPS_TPM));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_DPS_SYM_KEY));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_DPS_X5091));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_DPS_X5092));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_DPS_X5093));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_DPS_X5094));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_MANUAL_X509_AUTH1));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_MANUAL_X509_AUTH2));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_MANUAL_X509_AUTH3));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_MANUAL_X509_AUTH4));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_MANUAL_X509_AUTH5));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_MANUAL_CS_AUTH1));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_MANUAL_CS_AUTH3));
-        assert!(settings.is_err());
-
-        let settings = Settings::new(Path::new(BAD_SETTINGS_DYNAMIC_REPROVISIONING));
         assert!(settings.is_err());
     }
 

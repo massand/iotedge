@@ -3,18 +3,14 @@
 #![deny(rust_2018_idioms, warnings)]
 #![deny(clippy::all, clippy::pedantic)]
 
-use std::io;
-
 use edgelet_http::UrlConnector;
-use edgelet_test_utils::{run_tcp_server, run_uds_server};
+use edgelet_test_utils::run_tcp_server;
 use futures::future;
 use futures::prelude::*;
 use hyper::{
-    Body, Client, Error as HyperError, Method, Request, Response, StatusCode, Uri as HyperUri,
+    Body, Client, Error as HyperError, Method, Request, Response, StatusCode,
 };
 #[cfg(unix)]
-use hyperlocal::Uri as HyperlocalUri;
-use tempdir::TempDir;
 use typed_headers::mime;
 use typed_headers::{ContentLength, ContentType, HeaderMapExt};
 use url::Url;
@@ -99,40 +95,3 @@ fn tcp_post() {
     runtime.block_on(task).unwrap();
 }
 
-#[test]
-fn uds_post() {
-    let dir = TempDir::new("uds").unwrap();
-    let file_path = dir.path().join("sock");
-    let file_path = file_path.to_str().unwrap();
-
-    let server = run_uds_server(&file_path, |req| {
-        hello_handler(req).map_err(|err| io::Error::new(io::ErrorKind::Other, err))
-    })
-    .map_err(|err| eprintln!("{}", err));
-
-    let mut url = Url::from_file_path(file_path).unwrap();
-    url.set_scheme("unix").unwrap();
-    let connector = UrlConnector::new(&url).unwrap();
-
-    let client = Client::builder().build::<_, Body>(connector);
-
-    let url: HyperUri = HyperlocalUri::new(&file_path, "/").into();
-
-    let mut req = Request::builder()
-        .method(Method::POST)
-        .uri(url)
-        .body(POST_BODY.into())
-        .expect("could not build hyper::Request");
-    req.headers_mut()
-        .typed_insert(&ContentType(mime::APPLICATION_JSON));
-    req.headers_mut()
-        .typed_insert(&ContentLength(POST_BODY.len() as u64));
-
-    let task = client.request(req).map(|res| {
-        assert_eq!(StatusCode::OK, res.status());
-    });
-
-    let mut runtime = tokio::runtime::current_thread::Runtime::new().unwrap();
-    runtime.spawn(server);
-    runtime.block_on(task).unwrap();
-}
