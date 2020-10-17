@@ -202,9 +202,6 @@ const IOTEDGE_ID_CERT_MAX_DURATION_SECS: i64 = 2 * 3600;
 // 90 days
 const IOTEDGE_SERVER_CERT_MAX_DURATION_SECS: i64 = 90 * 24 * 3600;
 
-// HSM lib version that the iotedge runtime required
-const IOTEDGE_COMPAT_HSM_VERSION: &str = "1.0.3";
-
 #[derive(PartialEq)]
 enum StartApiReturnStatus {
     Restart,

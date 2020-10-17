@@ -1,6 +1,3 @@
-provisioning:
-  source: "manual"
-
 agent:
   name: "edgeAgent"
   type: "docker"
