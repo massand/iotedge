@@ -41,7 +41,7 @@ where
         params: Parameters,
     ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
         let cfg = self.config.clone();
-        let hsm = self.cert_client.clone();
+        let cert_client = self.cert_client.clone();
         let key_client = self.key_client.clone();
 
         let response = params
@@ -95,7 +95,7 @@ where
             .and_then(move |(alias, props)| { 
                 let response = refresh_cert(
                     key_client,
-                hsm,
+                cert_client,
                 alias,
                 &props,
                 ErrorKind::CertOperation(CertOperation::CreateIdentityCert))
