@@ -1,5 +1,5 @@
 // Copyright (c) Microsoft. All rights reserved.
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use failure::ResultExt;
 use futures::{Future, IntoFuture, Stream};
@@ -18,12 +18,11 @@ use crate::error::{EncryptionOperation, Error, ErrorKind};
 use crate::IntoResponse;
 
 pub struct EncryptHandler {
-    key_client: Arc<Mutex<aziot_key_client::Client>>,
+    key_client: Arc<aziot_key_client::Client>,
 }
 
 impl EncryptHandler {
-    pub fn new(key_client: Arc<Mutex<aziot_key_client::Client>>) -> Self {
-        
+    pub fn new(key_client: Arc<aziot_key_client::Client>) -> Self {
         EncryptHandler { key_client }
     }
 }
@@ -89,10 +88,8 @@ impl Handler<Parameters> for EncryptHandler
     }
 }
 
-fn get_ciphertext(key_client: Arc<Mutex<aziot_key_client::Client>>, key_handle: KeyHandle, iv: Vec<u8>, aad: Vec<u8>, plaintext: Vec<u8>) -> impl Future<Item = Vec<u8>, Error = Error> {
+fn get_ciphertext(key_client: Arc<aziot_key_client::Client>, key_handle: KeyHandle, iv: Vec<u8>, aad: Vec<u8>, plaintext: Vec<u8>) -> impl Future<Item = Vec<u8>, Error = Error> {
     key_client
-    .lock()
-    .expect("lock error")
     .encrypt(
         &key_handle,
          EncryptMechanism::Aead {

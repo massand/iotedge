@@ -68,7 +68,7 @@ fn compute_validity(expiration: &str, max_duration_sec: i64, context: ErrorKind)
 }
 
 fn refresh_cert(
-    key_client: Arc<Mutex<aziot_key_client::Client>>,
+    key_client: Arc<aziot_key_client::Client>,
     cert_client: Arc<Mutex<CertificateClient>>,
     alias: String,
     props: &CertificateProperties,
@@ -77,7 +77,7 @@ fn refresh_cert(
     let response = generate_key_and_csr(props, context.clone())
         .map_err(|_| Error::from(ErrorKind::CertOperation(CertOperation::CreateIdentityCert)))
         .and_then(|(privkey, csr)| {
-            let workload_ca_key_pair_handle = key_client.lock().expect("key client lock error").create_key_pair_if_not_exists(IOTEDGED_CA_ALIAS, Some("ec-p256:rsa-4096:*"))
+            let workload_ca_key_pair_handle = key_client.create_key_pair_if_not_exists(IOTEDGED_CA_ALIAS, Some("ec-p256:rsa-4096:*"))
                 .map_err(|_| Error::from(ErrorKind::CertOperation(CertOperation::CreateIdentityCert)))?;
                 Ok((privkey, csr, workload_ca_key_pair_handle))
         })

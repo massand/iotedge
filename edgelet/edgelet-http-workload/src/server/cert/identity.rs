@@ -20,13 +20,13 @@ use crate::IntoResponse;
 
 pub struct IdentityCertHandler<W: WorkloadConfig> {
     cert_client: Arc<Mutex<CertificateClient>>,
-    key_client: Arc<Mutex<aziot_key_client::Client>>,
+    key_client: Arc<aziot_key_client::Client>,
     config: W,
 }
 
 impl<W: WorkloadConfig> IdentityCertHandler<W> {
         
-    pub fn new(key_client: Arc<Mutex<aziot_key_client::Client>>, cert_client: Arc<Mutex<CertificateClient>>, config: W) -> Self {
+    pub fn new(key_client: Arc<aziot_key_client::Client>, cert_client: Arc<Mutex<CertificateClient>>, config: W) -> Self {
         IdentityCertHandler { key_client, cert_client, config }
     }
 }

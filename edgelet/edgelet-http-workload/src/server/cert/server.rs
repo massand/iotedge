@@ -22,12 +22,12 @@ use crate::IntoResponse;
 
 pub struct ServerCertHandler<W: WorkloadConfig> {
     cert_client: Arc<Mutex<CertificateClient>>,
-    key_client: Arc<Mutex<aziot_key_client::Client>>,
+    key_client: Arc<aziot_key_client::Client>,
     config: W,
 }
 
 impl<W: WorkloadConfig> ServerCertHandler<W> {
-    pub fn new(key_client: Arc<Mutex<aziot_key_client::Client>>, cert_client: Arc<Mutex<CertificateClient>>, config: W) -> Self {
+    pub fn new(key_client: Arc<aziot_key_client::Client>, cert_client: Arc<Mutex<CertificateClient>>, config: W) -> Self {
         ServerCertHandler { key_client, cert_client, config }
     }
 }

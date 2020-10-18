@@ -44,7 +44,7 @@ impl WorkloadService {
         runtime: &M,
         identity_client: Arc<Mutex<IdentityClient>>,
         cert_client: Arc<Mutex<CertificateClient>>,
-        key_client: Arc<Mutex<aziot_key_client::Client>>,
+        key_client: Arc<aziot_key_client::Client>,
         config: W,
     ) -> impl Future<Item = Self, Error = Error>
     where
@@ -112,18 +112,16 @@ fn get_key_handle(identity_client: Arc<Mutex<IdentityClient>>, name: &str) -> im
     })
 }
 
-fn get_master_encryption_key(key_client: &Arc<Mutex<KeyClient>>) -> impl Future<Item = KeyHandle, Error = Error> {
-    let key_client = key_client.lock().unwrap();
+fn get_master_encryption_key(key_client: &Arc<KeyClient>) -> impl Future<Item = KeyHandle, Error = Error> {
     key_client.create_key_if_not_exists("iotedge_master_encryption_id", aziot_key_common::CreateKeyValue::Generate { length: 32 })
     .map_err(|_| Error::from(ErrorKind::LoadMasterEncKey))
     .into_future()
 }
 
-fn get_derived_enc_key_handle(key_client: Arc<Mutex<KeyClient>>, name: &String) -> impl Future<Item = KeyHandle, Error = Error> {
+fn get_derived_enc_key_handle(key_client: Arc<KeyClient>, name: &String) -> impl Future<Item = KeyHandle, Error = Error> {
     let name = name.clone();
     get_master_encryption_key(&key_client)
     .and_then(move |key_handle| {
-        let key_client = key_client.lock().unwrap();
         key_client.create_derived_key(&key_handle, name.as_bytes())
         .map_err(|_| Error::from(ErrorKind::GetIdentity))
     })
