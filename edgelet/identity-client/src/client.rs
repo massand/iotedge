@@ -7,7 +7,8 @@ use hyper::client::{Client as HyperClient};
 use hyper::{Body, Client};
 use typed_headers::{self, http};
 
-use edgelet_http::{UrlConnector};
+use edgelet_core::UrlExt;
+use edgelet_http::UrlConnector;
 
 use crate::error::{Error, ErrorKind, RequestType};
 use url::Url;
@@ -21,8 +22,6 @@ pub struct IdentityClient {
 
 impl IdentityClient {
     pub fn new(api_version: aziot_identity_common_http::ApiVersion, url: &url::Url) -> Self {
-
-        
         let client = Client::builder()
             .build(UrlConnector::new(
                 &url).expect("Hyper client"));
@@ -37,18 +36,30 @@ impl IdentityClient {
         &self,
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
-        let uri = format!("{}identities/device?api-version={}", self.host.as_str(), self.api_version);
-        let body = serde_json::json! {{ "type": "aziot" }};
-
-        let identity = request(
-            &self.client,
-            hyper::Method::POST,
-            &uri,
-            Some(&body),
-        )
-        .and_then(|identity| {
-            Ok(identity)
+        let query = ::url::form_urlencoded::Serializer::new(String::new())
+            .append_pair("api-version", &self.api_version.to_string())
+            .finish();
+        let uri = format!("/identities/device?{}", query);
+        let base_path = self.host.to_base_path();
+        let identity = UrlConnector::build_hyper_uri(&self.host.scheme().to_string(), &self.host.to_base_path(), &uri)
+        .map(|uri| {
+            // let uri: http::Uri = hyperlocal::Uri::new("/run/aziot/identityd.sock", &uri).into();
+            let body = serde_json::json! {{ "type": "aziot" }};
+            (body, uri)
         })
+        .into_future()
+        .and_then(|(body, uri)| {
+            request(
+                &self.client,
+                hyper::Method::POST,
+                &uri,
+                Some(&body),
+            )
+            .and_then(|identity| {
+                Ok(identity)
+            })
+        })
+        .flatten()
         .map_err(|e| Error::from(e.context(ErrorKind::JsonParse(RequestType::GetDevice))));
 
         Box::new(identity)
@@ -60,6 +71,8 @@ impl IdentityClient {
     ) -> Box<dyn Future<Item = (), Error = Error> + Send> 
     {
         let uri = format!("{}identities/device/reprovision?api-version={}", self.host.as_str(), self.api_version);
+        let uri: http::Uri = hyperlocal::Uri::new(self.host.as_str(), &uri).into();
+        
         let body = serde_json::json! {{ "type": "aziot" }};
 
         let res = request::<_, _, ()>(
@@ -82,6 +95,8 @@ impl IdentityClient {
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
         let uri = format!("{}identities/modules?api-version={}", self.host.as_str(), self.api_version);
+        let uri: http::Uri = hyperlocal::Uri::new(self.host.as_str(), &uri).into();
+        
         let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
 
         let identity = request(
@@ -104,6 +119,8 @@ impl IdentityClient {
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
         let uri = format!("{}identities/modules/{}?api-version={}", self.host.as_str(), module_name, self.api_version);
+        let uri: http::Uri = hyperlocal::Uri::new(self.host.as_str(), &uri).into();
+
         let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
 
         let identity = request(
@@ -126,6 +143,7 @@ impl IdentityClient {
     ) -> Box<dyn Future<Item = (), Error = Error> + Send> 
     {       
         let uri = format!("{}identities/modules/{}?api-version={}", self.host.as_str(), module_name, self.api_version);
+        let uri: http::Uri = hyperlocal::Uri::new(self.host.as_str(), &uri).into();
 
         let res = request::<_, (), ()>(
             &self.client,
@@ -147,6 +165,8 @@ impl IdentityClient {
     ) -> Box<dyn Future<Item = aziot_identity_common::Identity, Error = Error> + Send>
     {
         let uri = format!("{}identities/modules/{}?api-version={}", self.host.as_str(), module_name, self.api_version);
+        let uri: http::Uri = hyperlocal::Uri::new(self.host.as_str(), &uri).into();
+
         let body = serde_json::json! {{ "type": "aziot", "moduleId" : module_name }};
 
         let identity = request(
@@ -168,6 +188,7 @@ impl IdentityClient {
     ) -> Box<dyn Future<Item = Vec<aziot_identity_common::Identity>, Error = Error> + Send> 
     {
         let uri = format!("{}identities/modules?api-version={}", self.host.as_str(), self.api_version);
+        let uri: http::Uri = hyperlocal::Uri::new(self.host.as_str(), &uri).into();
 
         let identities = request::<_, (), aziot_identity_common_http::get_module_identities::Response>(
             &self.client,
@@ -184,10 +205,17 @@ impl IdentityClient {
     }
 }
 
+fn build_request_uri(host: Url) -> Result<Uri, Error>
+{
+    let base_path = host.to_base_path()
+        .context(ErrorKind::ConnectorUri);
+    UrlConnector::build_hyper_uri(&host.scheme().to_string(), &base_path.to_string(), &uri)
+}
+
 fn request<TConnect, TRequest, TResponse>(
     client: &hyper::Client<TConnect, hyper::Body>,
     method: http::Method,
-    uri: &str,
+    uri: &http::Uri,
     body: Option<&TRequest>,
 ) -> Box<dyn Future<Item = TResponse, Error = Error> + Send>
 where

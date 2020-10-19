@@ -14,26 +14,29 @@ pub struct Error {
 
 #[derive(Debug, Fail)]
 pub enum ErrorKind {
-    #[fail(display = "Invalid URI to parse: {:?}", _0)]
-    Uri(url::ParseError),
-
+    #[fail(display = "Connector Uri error")]
+    ConnectorUri,
+    
     #[fail(display = "Invalid HTTP header value {:?}", _0)]
     HeaderValue(String),
-
+    
     #[fail(display = "Hyper HTTP error")]
     Hyper,
+    
+    #[fail(display = "HTTP response error: {}", _0)]
+    JsonParse(RequestType),
 
     #[fail(display = "HTTP request error")]
     Request,
     
     #[fail(display = "HTTP response error: [{}] {}", _0, _1)]
     Response(StatusCode, String),
-
-    #[fail(display = "HTTP response error: {}", _0)]
-    JsonParse(RequestType),
-
+    
     #[fail(display = "Serde error: {:?}", _0)]
     Serde(serde_json::Error),
+
+    #[fail(display = "Invalid URI to parse: {:?}", _0)]
+    Uri(url::ParseError),
 }
 
 impl Fail for Error {
