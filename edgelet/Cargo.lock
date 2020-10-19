@@ -271,6 +271,7 @@ version = "0.1.0"
 dependencies = [
  "aziot-cert-common-http",
  "aziot-key-common",
+ "edgelet-core",
  "edgelet-http",
  "failure",
  "futures",
