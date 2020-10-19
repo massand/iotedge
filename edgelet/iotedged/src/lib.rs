@@ -261,7 +261,7 @@ where
         loop {
             info!("Obtaining edge device provisioning data...");
         
-            let url = settings.endpoints().aziot_identityd_uri().clone();
+            let url = settings.endpoints().aziot_identityd_url().clone();
             let client = Arc::new(Mutex::new(identity_client::IdentityClient::new(aziot_identity_common_http::ApiVersion::V2020_09_01, &url)));
 
             let device_info = get_device_info(client)
@@ -518,7 +518,7 @@ where
     )
     .context(ErrorKind::Initialize(InitializeErrorReason::EdgeRuntime))?;
 
-    let watchdog = Watchdog::new(runtime, settings.watchdog().max_retries(), settings.endpoints().aziot_identityd_uri());
+    let watchdog = Watchdog::new(runtime, settings.watchdog().max_retries(), settings.endpoints().aziot_identityd_url());
     let runtime_future = watchdog
         .run_until(spec, EDGE_RUNTIME_MODULEID, shutdown.map_err(|_| ()))
         .map_err(Error::from);
@@ -593,7 +593,7 @@ where
     let url = settings.listen().management_uri().clone();
     let min_protocol_version = settings.listen().min_tls_version();
     
-    let identity_uri = settings.endpoints().aziot_identityd_uri().clone();
+    let identity_uri = settings.endpoints().aziot_identityd_url().clone();
     let identity_client = Arc::new(Mutex::new(identity_client::IdentityClient::new(aziot_identity_common_http::ApiVersion::V2020_09_01, &identity_uri)));
 
     ManagementService::new(runtime, identity_client, initiate_shutdown_and_reprovision)
@@ -641,9 +641,9 @@ where
     let url = settings.listen().workload_uri().clone();
     let min_protocol_version = settings.listen().min_tls_version();
 
-    let keyd_url = settings.endpoints().aziot_keyd_uri().clone();
-    let certd_url = settings.endpoints().aziot_certd_uri().clone();
-    let identityd_url = settings.endpoints().aziot_identityd_uri().clone();
+    let keyd_url = settings.endpoints().aziot_keyd_url().clone();
+    let certd_url = settings.endpoints().aziot_certd_url().clone();
+    let identityd_url = settings.endpoints().aziot_identityd_url().clone();
 
     let key_connector = http_common::Connector::new(&keyd_url).expect("Connector");
     let key_client = Arc::new(aziot_key_client::Client::new(aziot_key_common_http::ApiVersion::V2020_09_01, key_connector));

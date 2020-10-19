@@ -161,6 +161,8 @@ pub struct Settings<T> {
     homedir: PathBuf,
     #[serde(default)]
     watchdog: WatchdogSettings,
+    #[serde(default)]
+    #[cfg_attr(not(debug_assertions), serde(skip))]
     endpoints: Endpoints,
 }
 
@@ -209,22 +211,32 @@ where
 
 #[derive(Clone, Debug, PartialEq, serde_derive::Deserialize, serde_derive::Serialize)]
 pub struct Endpoints {
-    aziot_certd_uri: Url,
-    aziot_keyd_uri: Url,
-    aziot_identityd_uri: Url,
+    aziot_certd_url: Url,
+    aziot_keyd_url: Url,
+    aziot_identityd_url: Url,
+}
+
+impl Default for Endpoints {
+	fn default() -> Self {
+		Endpoints {
+			aziot_certd_url: Url::parse("unix:///run/aziot/certd.sock").expect("Url parse failed"),
+			aziot_keyd_url: Url::parse("unix:///run/aziot/keyd.sock").expect("Url parse failed"),
+			aziot_identityd_url: Url::parse("unix:///run/aziot/identityd.sock").expect("Url parse failed"),
+		}
+	}
 }
 
 impl Endpoints {
-    pub fn aziot_certd_uri(&self) -> &Url {
-        &self.aziot_certd_uri
+    pub fn aziot_certd_url(&self) -> &Url {
+        &self.aziot_certd_url
     }
 
-    pub fn aziot_keyd_uri(&self) -> &Url {
-        &self.aziot_keyd_uri
+    pub fn aziot_keyd_url(&self) -> &Url {
+        &self.aziot_keyd_url
     }
 
-    pub fn aziot_identityd_uri(&self) -> &Url {
-        &self.aziot_identityd_uri
+    pub fn aziot_identityd_url(&self) -> &Url {
+        &self.aziot_identityd_url
     }
 }
 
