@@ -94,11 +94,11 @@ where
             })
             .and_then(move |(alias, props)| { 
                 let response = refresh_cert(
-                    key_client,
-                cert_client,
-                alias,
-                &props,
-                ErrorKind::CertOperation(CertOperation::CreateIdentityCert))
+                    &key_client,
+                    cert_client,
+                    alias,
+                    &props,
+                    ErrorKind::CertOperation(CertOperation::CreateIdentityCert))
                 .map_err(|_| Error::from(ErrorKind::CertOperation(CertOperation::CreateIdentityCert)));
                 Ok(response)
             })

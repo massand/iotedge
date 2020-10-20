@@ -103,9 +103,9 @@ where
                 .with_san_entries(sans);
                 Ok((alias, props))
             })
-            .and_then(|(alias, props)| { 
+            .and_then(move |(alias, props)| { 
                 let body = refresh_cert(
-                    key_client,
+                    &key_client,
                     cert_client,
                     alias,
                     &props,

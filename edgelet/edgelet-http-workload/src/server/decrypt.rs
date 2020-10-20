@@ -62,7 +62,7 @@ impl Handler<Parameters> for DecryptHandler
                     base64::decode(request.ciphertext()).context(ErrorKind::MalformedRequestBody)?;
                 let initialization_vector = base64::decode(request.initialization_vector())
                     .context(ErrorKind::MalformedRequestBody)?;
-                let ciphertext = get_derived_enc_key_handle(key_store.clone(), &id)
+                let ciphertext = get_derived_enc_key_handle(key_store.clone(), id.clone())
                     .and_then(|k| { 
                         get_plaintext(key_store, k, initialization_vector, id.into_bytes(), plaintext)
                     })
@@ -88,6 +88,7 @@ impl Handler<Parameters> for DecryptHandler
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 fn get_plaintext(key_client: Arc<aziot_key_client::Client>, key_handle: KeyHandle, iv: Vec<u8>, aad: Vec<u8>, ciphertext: Vec<u8>) -> impl Future<Item = Vec<u8>, Error = Error> {
     key_client
     .decrypt(

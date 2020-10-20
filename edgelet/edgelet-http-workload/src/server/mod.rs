@@ -118,8 +118,7 @@ fn get_master_encryption_key(key_client: &Arc<KeyClient>) -> impl Future<Item = 
     .into_future()
 }
 
-fn get_derived_enc_key_handle(key_client: Arc<KeyClient>, name: &String) -> impl Future<Item = KeyHandle, Error = Error> {
-    let name = name.clone();
+fn get_derived_enc_key_handle(key_client: Arc<KeyClient>, name: String) -> impl Future<Item = KeyHandle, Error = Error> {
     get_master_encryption_key(&key_client)
     .and_then(move |key_handle| {
         key_client.create_derived_key(&key_handle, name.as_bytes())

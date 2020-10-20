@@ -202,6 +202,8 @@ const IOTEDGE_ID_CERT_MAX_DURATION_SECS: i64 = 2 * 3600;
 // 90 days
 const IOTEDGE_SERVER_CERT_MAX_DURATION_SECS: i64 = 90 * 24 * 3600;
 
+const STOP_TIME: Duration = Duration::from_secs(30);
+
 #[derive(PartialEq)]
 enum StartApiReturnStatus {
     Restart,
@@ -264,7 +266,7 @@ where
             let url = settings.endpoints().aziot_identityd_url().clone();
             let client = Arc::new(Mutex::new(identity_client::IdentityClient::new(aziot_identity_common_http::ApiVersion::V2020_09_01, &url)));
 
-            let device_info = get_device_info(client)
+            let device_info = get_device_info(&client)
             .map_err(|e| Error::from(e.context(ErrorKind::Initialize(InitializeErrorReason::DpsProvisioningClient))))
             .map(|(hub_name, device_id)| {
                 debug!("{}:{}", hub_name, device_id);
@@ -286,7 +288,6 @@ where
             // descriptors for the workload and management APIs and calls on these APIs will
             // begin to fail. Resilient modules should be able to deal with this, but we'll
             // restart all modules to ensure a clean start.
-            const STOP_TIME: Duration = Duration::from_secs(30);
             info!("Stopping all modules...");
             tokio_runtime
                 .block_on(runtime.stop_all(Some(STOP_TIME)))
@@ -327,7 +328,7 @@ where
     }
 }
 
-fn get_device_info(identity_client: Arc<Mutex<IdentityClient>>) -> impl Future<Item = (String, String), Error = Error> {
+fn get_device_info(identity_client: &Arc<Mutex<IdentityClient>>) -> impl Future<Item = (String, String), Error = Error> {
     let id_mgr = identity_client.lock().unwrap();
     id_mgr.get_device()
     .map_err(|_| Error::from(ErrorKind::Initialize(
@@ -691,7 +692,7 @@ mod tests {
     };
     use edgelet_docker::{DockerConfig, DockerModuleRuntime, Settings};
     use edgelet_test_utils::cert::TestCert;
-    use edgelet_test_utils::module::{TestModule, TestProvisioningResult, TestRuntime};
+    use edgelet_test_utils::module::{TestModule, TestRuntime};
 
     use super::{
         env, signal, CertificateIssuer, CertificateProperties, CreateCertificate, Digest,

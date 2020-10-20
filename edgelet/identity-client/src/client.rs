@@ -217,6 +217,10 @@ where
     let mut builder = hyper::Request::builder();
     builder.method(method).uri(uri);
     
+    // `builder` is consumed by both branches, so this cannot be replaced with `Option::map_or_else`
+	//
+	// Ref: https://github.com/rust-lang/rust-clippy/issues/5822
+    #[allow(clippy::option_if_let_else)]
     let builder =
     if let Some(body) = body {
         let body = serde_json::to_vec(body).expect("serializing request body to JSON cannot fail").into();
@@ -225,7 +229,7 @@ where
             .body(body)
     }
     else {
-        builder.body(Default::default())
+        builder.body(hyper::Body::default())
     };
     
     let req = builder.expect("cannot fail to create hyper request");
@@ -282,6 +286,10 @@ where
     let mut builder = hyper::Request::builder();
     builder.method(method).uri(uri);
     
+    // `builder` is consumed by both branches, so this cannot be replaced with `Option::map_or_else`
+	//
+	// Ref: https://github.com/rust-lang/rust-clippy/issues/5822
+	#[allow(clippy::option_if_let_else)]
     let builder =
     if let Some(body) = body {
         let body = serde_json::to_vec(body).expect("serializing request body to JSON cannot fail").into();
@@ -290,7 +298,7 @@ where
             .body(body)
     }
     else {
-        builder.body(Default::default())
+        builder.body(hyper::Body::default())
     };
     
     let req = builder.expect("cannot fail to create hyper request");

@@ -1257,13 +1257,16 @@ mod tests {
     use futures::stream::Empty;
     use json_patch::merge;
     use serde_json::{self, json, Value as JsonValue};
-    use tempdir::TempDir;
-    use tempfile::NamedTempFile;
 
     use edgelet_core::{
-        Connect, Listen, ModuleRegistry, ModuleTop, RuntimeSettings,
-        WatchdogSettings, Endpoints,
+        Connect, Endpoints, Listen, ModuleRegistry, ModuleTop, RuntimeSettings,
+        WatchdogSettings,
     };
+    #[cfg(target_os = "linux")]
+    use std::fs;
+    #[cfg(target_os = "linux")]
+    use tempfile::NamedTempFile;
+    use tempfile::TempDir;
 
     fn make_settings(merge_json: Option<JsonValue>) -> (Settings, TempDir) {
         let tmp_dir = TempDir::new().unwrap();

@@ -69,7 +69,7 @@ fn compute_validity(expiration: &str, max_duration_sec: i64, context: ErrorKind)
 }
 
 fn refresh_cert(
-    key_client: Arc<aziot_key_client::Client>,
+    key_client: &Arc<aziot_key_client::Client>,
     cert_client: Arc<Mutex<CertificateClient>>,
     alias: String,
     props: &CertificateProperties,
@@ -152,7 +152,7 @@ fn generate_key_and_csr(
     extensions
         .push(extended_key_usage)?;
     
-    if !props.san_entries().is_none() {
+    if props.san_entries().is_some() {
         let mut subject_alt_name = openssl::x509::extension::SubjectAlternativeName::new();
         props
             .san_entries()
@@ -160,7 +160,6 @@ fn generate_key_and_csr(
             .iter()
             .for_each(|s| { 
                 subject_alt_name.dns(s);
-                ()
             });
         let san = subject_alt_name
             .build(&csr.x509v3_context(None))?;
