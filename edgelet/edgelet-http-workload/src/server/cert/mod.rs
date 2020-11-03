@@ -83,9 +83,18 @@ fn refresh_cert(
     props: &CertificateProperties,
     context: ErrorKind,
 ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
+    //TODO: Fetch current workload CA cert and check expiration
+    //TODO: If expired, fetch current key algorithm and produce new one. 
+        //     let workload_ca_key_pair = load_key_pair("workload-ca");
+    // if not found {
+    //     let workload_ca_key_pair = create_if_not_exists("workload-ca", algo);
+    // }
+    
     let response = generate_key_and_csr(props)
         .map_err(|e| Error::from(e.context(context.clone())))
         .and_then(|(privkey, csr)| {
+            //TODO: Keep CA name configurable
+            //TODO: Create new keypair if not exists?
             let iotedged_ca_key_pair_handle = key_client
                 .load_key_pair(IOTEDGED_CA_ALIAS)
                 .map_err(|e| Error::from(e.context(context.clone())))?;
