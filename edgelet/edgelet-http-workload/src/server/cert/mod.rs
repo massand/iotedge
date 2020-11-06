@@ -83,26 +83,15 @@ fn refresh_cert(
     props: &CertificateProperties,
     context: ErrorKind,
 ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
-    //TODO: Fetch current workload CA cert and check expiration
-    //TODO: If expired, fetch current key algorithm and produce new one. 
-        //     let workload_ca_key_pair = load_key_pair("workload-ca");
-    // if not found {
-    //     let workload_ca_key_pair = create_if_not_exists("workload-ca", algo);
-    // }
-    
     let response = generate_key_and_csr(props)
         .map_err(|e| Error::from(e.context(context.clone())))
         .and_then(|(privkey, csr)| {
-            //TODO: Keep CA name configurable
-            //TODO: Create new keypair if not exists?
-            let iotedged_ca_key_pair_handle = key_client
-                .load_key_pair(IOTEDGED_CA_ALIAS)
-                .map_err(|e| Error::from(e.context(context.clone())))?;
-            Ok((privkey, csr, iotedged_ca_key_pair_handle))
+            let iotedged_ca_key_pair_handle = get_workload_ca_key_pair(key_client.clone(), IOTEDGED_CA_ALIAS, context.clone())?;
+            Ok((privkey, csr, IOTEDGED_CA_ALIAS, iotedged_ca_key_pair_handle))
         })
         .into_future()
         .and_then(
-            move |(privkey, csr, iotedged_ca_key_pair_handle)| -> Result<_> {
+            move |(privkey, csr, iotedged_ca_cert_id, iotedged_ca_key_pair_handle)| -> Result<_> {
                 let context_copy = context.clone();
                 let response = cert_client
                     .lock()
@@ -110,7 +99,7 @@ fn refresh_cert(
                     .create_cert(
                         &alias,
                         &csr,
-                        Some((IOTEDGED_CA_ALIAS, &iotedged_ca_key_pair_handle)),
+                        Some((iotedged_ca_cert_id, &iotedged_ca_key_pair_handle)),
                     )
                     .map_err(|e| Error::from(e.context(context_copy)))
                     .map(|cert| (privkey, cert))
@@ -196,6 +185,25 @@ fn generate_key_and_csr(
     let csr = csr.to_pem()?;
 
     Ok((privkey, csr))
+}
+
+fn get_workload_ca_key_pair(key_client: Arc<aziot_key_client::Client>, ca_cert_name: &'static str, context: ErrorKind) -> Result<aziot_key_common::KeyHandle> {
+    //TODO: Fetch current workload CA cert and check expiration
+    //      let workload_ca_cert = 
+    //TODO: If expired, fetch current key algorithm and produce new one. 
+        //     let workload_ca_key_pair = load_key_pair("workload-ca");
+        //      delete_key_pair(workload_ca_key_pair)
+
+    // if not found {
+    //     let workload_ca_key_pair = create_if_not_exists("workload-ca", algo);
+    // }
+    
+    //TODO: Keep CA name configurable
+    //TODO: Create new keypair if not exists?
+    let iotedged_ca_key_pair_handle = key_client
+                .load_key_pair(IOTEDGED_CA_ALIAS)
+                .map_err(|e| Error::from(e.context(context.clone())))?;
+    Ok(iotedged_ca_key_pair_handle)
 }
 
 #[derive(Debug)]
