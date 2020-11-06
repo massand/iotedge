@@ -187,7 +187,7 @@ fn generate_key_and_csr(
     Ok((privkey, csr))
 }
 
-fn get_workload_ca_key_pair(key_client: Arc<aziot_key_client::Client>, ca_cert_name: &'static str, context: ErrorKind) -> Result<aziot_key_common::KeyHandle> {
+fn get_workload_ca_key_pair(key_client: Arc<aziot_key_client::Client>, _ca_cert_name: &'static str, context: ErrorKind) -> Result<aziot_key_common::KeyHandle> {
     //TODO: Fetch current workload CA cert and check expiration
     //      let workload_ca_cert = 
     //TODO: If expired, fetch current key algorithm and produce new one. 

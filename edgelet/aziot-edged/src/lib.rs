@@ -289,6 +289,7 @@ where
                 hub,
                 settings.parent_hostname().map(String::from),
                 device_id,
+                AZIOT_EDGED_CA_ALIAS.into(),
                 AZIOT_EDGE_ID_CERT_MAX_DURATION_SECS,
                 AZIOT_EDGE_SERVER_CERT_MAX_DURATION_SECS,
             );
