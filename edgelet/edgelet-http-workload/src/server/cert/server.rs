@@ -49,7 +49,6 @@ where
         let cert_client = self.cert_client.clone();
         let key_client = self.key_client.clone();
         let cfg = self.config.clone();
-        let max_duration = cfg.get_cert_max_duration(CertificateType::Server);
 
         let response = params
             .name("name")
@@ -73,6 +72,7 @@ where
             .into_future()
             .flatten()
             .and_then(move |(alias, body, module_id)| {
+                let max_duration = cfg.get_cert_max_duration(CertificateType::Server);
                 let cert_req: ServerCertificateRequest =
                     serde_json::from_slice(&body).context(ErrorKind::MalformedRequestBody)?;
 
@@ -117,14 +117,15 @@ where
                 .with_dns_san_entries(dns)
                 .with_ip_entries(ip);
 
-                Ok((alias, props))
+                Ok((alias, props, cfg))
             })
-            .and_then(move |(alias, props)| {
+            .and_then(move |(alias, props, cfg)| {
                 let body = refresh_cert(
                     &key_client,
                     cert_client,
                     alias,
                     &props,
+                    cfg.edge_ca_id().to_string(),
                     ErrorKind::CertOperation(CertOperation::GetServerCert),
                 )
                 .map_err(|_| Error::from(ErrorKind::CertOperation(CertOperation::GetServerCert)));

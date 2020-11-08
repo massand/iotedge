@@ -306,7 +306,7 @@ where
                 hub,
                 settings.parent_hostname().map(String::from),
                 device_id,
-      IOTEDGED_CA_ALIAS.into(),
+                IOTEDGED_CA_ALIAS.into(),
                 IOTEDGE_ID_CERT_MAX_DURATION_SECS,
                 IOTEDGE_SERVER_CERT_MAX_DURATION_SECS,
             );
