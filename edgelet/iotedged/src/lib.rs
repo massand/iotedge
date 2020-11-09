@@ -306,7 +306,7 @@ where
                 hub,
                 settings.parent_hostname().map(String::from),
                 device_id,
-                IOTEDGED_CA_ALIAS.into(),
+                settings.edge_ca_id().unwrap_or(IOTEDGED_CA_ALIAS).to_string(),
                 IOTEDGE_ID_CERT_MAX_DURATION_SECS,
                 IOTEDGE_SERVER_CERT_MAX_DURATION_SECS,
             );
@@ -714,8 +714,8 @@ mod tests {
     };
     use docker::models::ContainerCreateBody;
 
-    #[cfg(unix)]
     static GOOD_SETTINGS_NESTED_EDGE: &str = "test/linux/sample_settings.nested.edge.yaml";
+    static GOOD_SETTINGS_EDGE_CA_ID: &str = "test/linux/sample_settings.edge.ca.id.yaml";
     #[derive(Clone, Copy, Debug, Fail)]
     pub struct Error;
 
@@ -737,5 +737,13 @@ mod tests {
 
         let settings = Settings::new(Path::new(GOOD_SETTINGS_NESTED_EDGE)).unwrap();
         assert_eq!(settings.parent_hostname(), Some("parent_iotedge_device"));
+    }
+
+    #[test]
+    fn settings_for_edge_ca_id() {
+        let _guard = LOCK.lock().unwrap();
+
+        let settings = Settings::new(Path::new(GOOD_SETTINGS_EDGE_CA_ID)).unwrap();
+        assert_eq!(settings.edge_ca_id(), Some("iotedge-test-ca"));
     }
 }
