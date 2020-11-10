@@ -85,47 +85,51 @@ fn refresh_cert(
 ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
     let response = generate_key_and_csr(props)
         .map_err(|e| Error::from(e.context(context.clone())))
-        .and_then(|(privkey, csr)| {
-            let aziot_edged_ca_key_pair_handle = get_workload_ca_key_pair(key_client.clone(), edge_ca_id.clone(), context.clone())?;
-            Ok((privkey, csr, aziot_edged_ca_key_pair_handle))
-        })
         .into_future()
-        .and_then(
-            move |(privkey, csr, aziot_edged_ca_key_pair_handle)| -> Result<_> {
-                let context_copy = context.clone();
-                let response = cert_client
-                    .lock()
-                    .expect("certificate client lock error")
-                    .create_cert(
-                        &alias,
-                        &csr,
-                        Some((edge_ca_id.as_str(), &aziot_edged_ca_key_pair_handle)),
-                    )
-                    .map_err(|e| Error::from(e.context(context_copy)))
-                    .map(|cert| (privkey, cert))
-                    .and_then(move |(privkey, cert)| {
-                        let pk = privkey
-                            .private_key_to_pem_pkcs8()
-                            .context(context.clone())?;
-                        let cert = Certificate::new(cert, pk);
-                        let cert = cert_to_response(&cert, context.clone())?;
-                        let body = match serde_json::to_string(&cert) {
-                            Ok(body) => body,
-                            Err(err) => return Err(Error::from(err.context(context))),
-                        };
+        .and_then(|(privkey, csr)| {
+            let response = get_workload_ca_key_pair(key_client.clone(), cert_client.clone(),edge_ca_id.clone(), context.clone())
+                .map_err(|e| Error::from(e.context(context.clone())))
+                .and_then(|aziot_edged_ca_key_pair_handle| {
+                    Ok((privkey, csr, aziot_edged_ca_key_pair_handle))
+                })
+                .and_then(
+                    move |(privkey, csr, aziot_edged_ca_key_pair_handle)| -> Result<_> {
+                        let context_copy = context.clone();
+                        let response = cert_client
+                            .lock()
+                            .expect("certificate client lock error")
+                            .create_cert(
+                                &alias,
+                                &csr,
+                                Some((edge_ca_id.as_str(), &aziot_edged_ca_key_pair_handle)),
+                            )
+                            .map_err(|e| Error::from(e.context(context_copy)))
+                            .map(|cert| (privkey, cert))
+                            .and_then(move |(privkey, cert)| {
+                                let pk = privkey
+                                    .private_key_to_pem_pkcs8()
+                                    .context(context.clone())?;
+                                let cert = Certificate::new(cert, pk);
+                                let cert = cert_to_response(&cert, context.clone())?;
+                                let body = match serde_json::to_string(&cert) {
+                                    Ok(body) => body,
+                                    Err(err) => return Err(Error::from(err.context(context))),
+                                };
 
-                        let response = Response::builder()
-                            .status(StatusCode::CREATED)
-                            .header(CONTENT_TYPE, "application/json")
-                            .header(CONTENT_LENGTH, body.len().to_string().as_str())
-                            .body(body.into())
-                            .context(context)?;
+                                let response = Response::builder()
+                                    .status(StatusCode::CREATED)
+                                    .header(CONTENT_TYPE, "application/json")
+                                    .header(CONTENT_LENGTH, body.len().to_string().as_str())
+                                    .body(body.into())
+                                    .context(context)?;
 
+                                Ok(response)
+                            });
                         Ok(response)
-                    });
-                Ok(response)
-            },
-        )
+                    },
+                );
+            Ok(response)
+        })
         .flatten()
         .or_else(|e| Ok(e.into_response()));
 
@@ -187,9 +191,24 @@ fn generate_key_and_csr(
     Ok((privkey, csr))
 }
 
-fn get_workload_ca_key_pair(key_client: Arc<aziot_key_client::Client>, ca_cert_id: String, context: ErrorKind) -> Result<aziot_key_common::KeyHandle> {
+fn get_workload_ca_key_pair(key_client: Arc<aziot_key_client::Client>, cert_client: Arc<Mutex<CertificateClient>>, ca_cert_id: String, context: ErrorKind) 
+    -> Box<dyn Future<Item = aziot_key_common::KeyHandle, Error = Error> + Send>{
     //TODO: Fetch current workload CA cert and check expiration
     //      let workload_ca_cert = 
+    let aziot_edged_ca_key_pair_handle = cert_client
+        .lock()
+        .expect("certificate client lock error")
+        .get_cert(
+            &ca_cert_id,
+        )
+        .map_err(|e| Error::from(e.context(context)))
+        .map(|_| -> Result<_>{
+            key_client
+                .load_key_pair(ca_cert_id.as_str())
+                .map_err(|e| Error::from(e.context(context.clone())))
+        })
+        .flatten();
+
     //TODO: If expired, fetch current key algorithm and produce new one. 
         //     let workload_ca_key_pair = load_key_pair("workload-ca");
         //      delete_key_pair(workload_ca_key_pair)
@@ -198,12 +217,8 @@ fn get_workload_ca_key_pair(key_client: Arc<aziot_key_client::Client>, ca_cert_i
     //     let workload_ca_key_pair = create_if_not_exists("workload-ca", algo);
     // }
     
-    //TODO: Keep CA name configurable
     //TODO: Create new keypair if not exists?
-    let aziot_edged_ca_key_pair_handle = key_client
-                .load_key_pair(ca_cert_id.as_str())
-                .map_err(|e| Error::from(e.context(context.clone())))?;
-    Ok(aziot_edged_ca_key_pair_handle)
+    Box::new(aziot_edged_ca_key_pair_handle)
 }
 
 #[derive(Debug)]
