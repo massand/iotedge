@@ -83,19 +83,17 @@ fn refresh_cert(
     edge_ca_id: String,
     context: ErrorKind,
 ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
+    let key_client_copy = key_client.clone();
     let response = generate_key_and_csr(props)
         .map_err(|e| Error::from(e.context(context.clone())))
         .into_future()
-        .and_then(|(privkey, csr)| {
-            let response = get_workload_ca_key_pair(key_client.clone(), cert_client.clone(),edge_ca_id.clone(), context.clone())
-                .map_err(|e| Error::from(e.context(context.clone())))
-                .and_then(|edge_ca_key_pair_handle| {
-                    Ok((privkey, csr, edge_ca_key_pair_handle))
-                })
-                .and_then(
-                    move |(privkey, csr, edge_ca_key_pair_handle)| -> Result<_> {
-                        let context_copy = context.clone();
-                        let response = cert_client
+        .and_then(move |(privkey, csr)| -> Result<_>{
+            let context_copy = context.clone();
+            let response = get_workload_ca_key_pair(key_client_copy, cert_client.clone(),edge_ca_id.clone(), context_copy.clone())
+                .map_err(|e| Error::from(e.context(context_copy)))
+                .and_then(move |edge_ca_key_pair_handle| -> Result<_> {
+                    let context_copy = context.clone();   
+                    let response = cert_client
                             .lock()
                             .expect("certificate client lock error")
                             .create_cert(
@@ -104,8 +102,7 @@ fn refresh_cert(
                                 Some((edge_ca_id.as_str(), &edge_ca_key_pair_handle)),
                             )
                             .map_err(|e| Error::from(e.context(context_copy)))
-                            .map(|cert| (privkey, cert))
-                            .and_then(move |(privkey, cert)| {
+                            .and_then(move |cert| {
                                 let pk = privkey
                                     .private_key_to_pem_pkcs8()
                                     .context(context.clone())?;
@@ -127,7 +124,7 @@ fn refresh_cert(
                             });
                         Ok(response)
                     },
-                );
+                ).flatten();
             Ok(response)
         })
         .flatten()
@@ -194,18 +191,16 @@ fn generate_key_and_csr(
 fn get_workload_ca_key_pair(key_client: Arc<aziot_key_client::Client>, cert_client: Arc<Mutex<CertificateClient>>, ca_cert_id: String, context: ErrorKind) 
     -> Box<dyn Future<Item = aziot_key_common::KeyHandle, Error = Error> + Send>{
     //TODO: Fetch current workload CA cert and check expiration
-    //      let workload_ca_cert = 
     let edge_ca_key_pair_handle = cert_client
         .lock()
         .expect("certificate client lock error")
         .get_cert(
             &ca_cert_id,
         )
-        .map_err(|e| Error::from(e.context(context)))
-        .map(|_| -> Result<_>{
-            key_client
+        .then(move |result|  match result {
+            Ok(cert) => key_client
                 .load_key_pair(ca_cert_id.as_str())
-                .map_err(|e| Error::from(e.context(context.clone())))
+                .map_err(|e| Error::from(e.context(context)))
         })
         .flatten();
 
