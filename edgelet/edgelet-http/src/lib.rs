@@ -384,8 +384,8 @@ impl HyperExt for Http {
                 // Try to parse the host as an FD number, then as an FD name
                 let socket = host
                     .parse()
-                    .map_err(|_| ())
-                    .and_then(|num| systemd::listener(num).map_err(|_| ()))
+                    .map_err(|_e| ())
+                    .and_then(|num| systemd::listener(num).map_err(|_e| ()))
                     .or_else(|_| systemd::listener_name(host))
                     .with_context(|_| {
                         ErrorKind::InvalidUrlWithReason(

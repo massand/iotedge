@@ -43,7 +43,7 @@ impl fmt::Display for ModuleStatus {
             "{}",
             serde_json::to_string(self)
                 .map(|s| s.trim_matches('"').to_string())
-                .map_err(|_| fmt::Error)?
+                .map_err(|_e| fmt::Error)?
         )
     }
 }
