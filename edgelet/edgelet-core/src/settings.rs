@@ -134,7 +134,7 @@ impl ManualDeviceConnectionString {
         }
         let key = MemoryKey::new(
             base64::decode(&key)
-                .map_err(|_| ErrorKind::ConnectionStringMalformedParameter(SHAREDACCESSKEY_KEY))?,
+                .map_err(|_e| ErrorKind::ConnectionStringMalformedParameter(SHAREDACCESSKEY_KEY))?,
         );
 
         let device_id =

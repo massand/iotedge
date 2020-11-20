@@ -237,7 +237,7 @@ impl Sign for MemoryKey {
             SignatureAlgorithm::HMACSHA256 => {
                 // Create `Mac` trait implementation, namely HMAC-SHA256
                 let mut mac = Hmac::<Sha256>::new(&self.key)
-                    .map_err(|_| ErrorKind::SignInvalidKeyLength(self.key.len()))?;
+                    .map_err(|_e| ErrorKind::SignInvalidKeyLength(self.key.len()))?;
                 mac.input(data);
 
                 // `result` has type `MacResult` which is a thin wrapper around array of
