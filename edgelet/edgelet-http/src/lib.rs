@@ -372,7 +372,7 @@ impl HyperExt for Http {
             UNIX_SCHEME => {
                 let path = url
                     .to_uds_file_path()
-                    .map_err(|_| ErrorKind::InvalidUrl(url.to_string()))?;
+                    .map_err(|_e| ErrorKind::InvalidUrl(url.to_string()))?;
                 unix::listener(path)?
             }
             #[cfg(target_os = "linux")]
@@ -384,8 +384,8 @@ impl HyperExt for Http {
                 // Try to parse the host as an FD number, then as an FD name
                 let socket = host
                     .parse()
-                    .map_err(|_e| ())
-                    .and_then(|num| systemd::listener(num).map_err(|_e| ()))
+                    .map_err(drop)
+                    .and_then(|num| systemd::listener(num).map_err(drop))
                     .or_else(|_| systemd::listener_name(host))
                     .with_context(|_| {
                         ErrorKind::InvalidUrlWithReason(

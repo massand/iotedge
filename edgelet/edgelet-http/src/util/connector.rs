@@ -53,7 +53,7 @@ impl UrlConnector {
             UNIX_SCHEME => {
                 let file_path = url
                     .to_uds_file_path()
-                    .map_err(|_| ErrorKind::InvalidUrl(url.to_string()))?;
+                    .map_err(|_e| ErrorKind::InvalidUrl(url.to_string()))?;
                 if socket_file_exists(&file_path) {
                     Ok(UrlConnector::Unix(UnixConnector::new()))
                 } else {
@@ -92,7 +92,7 @@ impl UrlConnector {
             UNIX_SCHEME => Ok(HyperlocalUri::new(base_path, &path).into()),
             HTTP_SCHEME => Ok(Url::parse(base_path)
                 .and_then(|base| base.join(path))
-                .and_then(|url| url.as_str().parse().map_err(|_| ParseError::IdnaError))
+                .and_then(|url| url.as_str().parse().map_err(|_e| ParseError::IdnaError))
                 .with_context(|_| ErrorKind::MalformedUrl {
                     scheme: scheme.to_string(),
                     base_path: base_path.to_string(),

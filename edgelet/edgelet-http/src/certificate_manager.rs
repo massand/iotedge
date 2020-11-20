@@ -119,7 +119,7 @@ impl<C: CreateCertificate + Clone> CertificateManager<C> {
         } else {
             Either::B(
                 Delay::new(when)
-                    .map_err(|_| Error::from(ErrorKind::CertificateTimerCreationError))
+                    .map_err(|_e| Error::from(ErrorKind::CertificateTimerCreationError))
                     .and_then(move |_| match expiration_callback() {
                         Ok(_) => Ok(()),
                         Err(_) => Err(Error::from(ErrorKind::CertificateTimerRuntimeError)),
