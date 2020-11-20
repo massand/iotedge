@@ -113,7 +113,7 @@ where
                     &&*format!("at least {} columns", pid_index + 1),
                 )
             })?;
-            let pid = val.parse::<i32>().map_err(|_| {
+            let pid = val.parse::<i32>().map_err(|_e| {
                 serde::de::Error::invalid_value(
                     serde::de::Unexpected::Str(val),
                     &"a process ID number",
@@ -148,7 +148,7 @@ pub fn runtime_state(
                 "running" => Some(ModuleStatus::Running),
                 _ => Some(ModuleStatus::Unknown),
             })
-            .unwrap_or_else(|| ModuleStatus::Unknown);
+            .unwrap_or(ModuleStatus::Unknown);
         ModuleRuntimeState::default()
             .with_status(status)
             .with_exit_code(state.exit_code())

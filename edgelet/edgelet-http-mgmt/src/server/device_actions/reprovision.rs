@@ -32,7 +32,7 @@ impl Handler<Parameters> for ReprovisionDevice {
         let response = self
             .initiate_shutdown
             .unbounded_send(())
-            .map_err(|_| Error::from(ErrorKind::ReprovisionDevice))
+            .map_err(|_e| Error::from(ErrorKind::ReprovisionDevice))
             .and_then(|_| -> Result<_, Error> {
                 let response = Response::builder()
                     .status(StatusCode::OK)

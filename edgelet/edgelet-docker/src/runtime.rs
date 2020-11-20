@@ -785,7 +785,7 @@ impl ModuleRuntime for DockerModuleRuntime {
             .map(serde_json::Value::Array) // Condense into single json value
             .and_then(|stats| {
                 // convert to string
-                serde_json::to_string(&stats).map_err(|_| {
+                serde_json::to_string(&stats).map_err(|_e| {
                     Error::from(ErrorKind::RuntimeOperation(
                         RuntimeOperation::SystemResources,
                     ))
@@ -1151,7 +1151,7 @@ where
         .extensions()
         .get::<Pid>()
         .cloned()
-        .unwrap_or_else(|| Pid::None);
+        .unwrap_or(Pid::None);
 
     let expected_module_id = req.extensions().get::<ModuleId>().cloned();
 

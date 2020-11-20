@@ -110,7 +110,7 @@ where
         iothub_hostname,
         runtime,
     )
-    .map_err(|_| Error::from(ErrorKind::SupportBundle));
+    .map_err(|_e| Error::from(ErrorKind::SupportBundle));
 
     Box::new(result)
 }
