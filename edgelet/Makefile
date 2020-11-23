@@ -20,9 +20,11 @@ PACKAGE?="$(PACKAGE_NAME)-$(RPM_VERSION)"
 prefix?=/usr
 exec_prefix?=$(prefix)
 bindir?=$(exec_prefix)/bin
+libexecdir?=$(exec_prefix)/libexec
 libdir?=$(exec_prefix)/lib
 sysconfdir?=/etc
 localstatedir?=/var
+rundir?=/run
 datarootdir?=$(prefix)/share
 datadir?=$(datarootdir)
 docdir?=$(datarootdir)/doc/$(PACKAGE_NAME)
@@ -134,9 +136,9 @@ rpm-dist:
 	rm -f $(TARGET)/$(PACKAGE).tar
 
 install: release
-	$(INSTALL_PROGRAM) -D $(TARGET)/aziot-edged $(DESTDIR)$(bindir)/aziot-edged
+	$(INSTALL_PROGRAM) -D $(TARGET)/aziot-edged $(DESTDIR)$(libexecdir)/aziot/aziot-edged
 	$(INSTALL_PROGRAM) -D $(TARGET)/iotedge $(DESTDIR)$(bindir)/iotedge
-	$(INSTALL_DATA) -D $(srcdir)/contrib/config/linux/config.yaml $(DESTDIR)$(sysconfdir)/iotedge/config.yaml
+	$(INSTALL_DATA) -D $(srcdir)/contrib/config/linux/config.yaml $(DESTDIR)$(sysconfdir)/aziot/edged/config.yaml
 	$(INSTALL_DATA) -D $(srcdir)/contrib/config/linux/logrotate $(DESTDIR)$(sysconfdir)/logrotate.d/aziot-edge
 	$(INSTALL_DATA) -D $(srcdir)/contrib/systemd/aziot-edged.service $(DESTDIR)$(unitdir)/aziot-edged.service
 	$(INSTALL_DATA) -D $(srcdir)/contrib/man/man1/iotedge.1 $(DESTDIR)$(man1)/iotedge.1
@@ -145,8 +147,8 @@ install: release
 	$(GZIP) $(DESTDIR)$(man8)/aziot-edged.8
 	$(INSTALL) -d -m 0755 $(DESTDIR)$(localstatedir)/lib/aziot/edged
 	$(INSTALL) -d -m 0755 $(DESTDIR)$(localstatedir)/log/aziot/edged
-	$(INSTALL) -m 0660 /dev/null $(DESTDIR)$(localstatedir)/lib/aziot/edged/aziot-edged.mgmt.socket
-	$(INSTALL) -m 0666 /dev/null $(DESTDIR)$(localstatedir)/lib/aziot/edged/aziot-edged.workload.sock
+	$(INSTALL) -m 0660 /dev/null $(DESTDIR)$(rundir)/aziot/edged/aziot-edged.mgmt.sock
+	$(INSTALL) -m 0666 /dev/null $(DESTDIR)$(rundir)/aziot/edged/aziot-edged.workload.sock
 	$(INSTALL_DATA) -D $(srcdir)/contrib/docs/LICENSE $(DESTDIR)$(docdir)/LICENSE
 	$(INSTALL_DATA) -D $(srcdir)/contrib/docs/ThirdPartyNotices $(DESTDIR)$(docdir)/ThirdPartyNotices
 	$(INSTALL_DATA) -D $(srcdir)/contrib/docs/trademark $(DESTDIR)$(docdir)/trademark
