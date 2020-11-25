@@ -1,3 +1,4 @@
+//D
 // Copyright (c) Microsoft. All rights reserved.
 
 #![deny(rust_2018_idioms, warnings)]
