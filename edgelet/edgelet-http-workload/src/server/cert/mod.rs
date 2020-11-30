@@ -164,18 +164,38 @@ fn generate_key_and_csr(
     csr.set_pubkey(&pubkey)?;
 
     let mut extended_key_usage = openssl::x509::extension::ExtendedKeyUsage::new();
+    let mut basic_constraints = openssl::x509::extension::BasicConstraints::new();
+    let mut key_usage = openssl::x509::extension::KeyUsage::new();
+    // let mut auth_key_id = openssl::x509::extension::AuthorityKeyIdentifier::new();
+    // let mut subject_key_id = openssl::x509::extension::SubjectKeyIdentifier::new();
 
     match props.certificate_type() {
-         &edgelet_core::CertificateType::Client => { extended_key_usage.client_auth(); },
-         &edgelet_core::CertificateType::Server => { extended_key_usage.server_auth(); },
-         &edgelet_core::CertificateType::Ca => {},
+         &edgelet_core::CertificateType::Client => { 
+             extended_key_usage.client_auth(); 
+            },
+         &edgelet_core::CertificateType::Server => { 
+            extended_key_usage.server_auth(); 
+            },
+         &edgelet_core::CertificateType::Ca => { 
+             basic_constraints.ca().critical().pathlen(0);
+             key_usage.critical().digital_signature().key_cert_sign();
+            },
          _ => {},
     }
 
     let extended_key_usage = extended_key_usage.build()?;
+    let basic_constraints = basic_constraints.build()?;
+    let key_usage = key_usage.build()?;
+
+    // let auth_key_id = auth_key_id.build(X509v3Context)?;
+    // let subject_key_id = subject_key_id.build()?;
 
     let mut extensions = openssl::stack::Stack::new()?;
     extensions.push(extended_key_usage)?;
+    extensions.push(basic_constraints)?;
+    extensions.push(key_usage)?;
+    // extensions.push(auth_key_id)?;
+    // extensions.push(subject_key_id)?;
 
     if props.dns_san_entries().is_some() || props.ip_entries().is_some() {
         let mut subject_alt_name = openssl::x509::extension::SubjectAlternativeName::new();
@@ -208,14 +228,7 @@ fn get_edge_ca_key_pair(key_client: Arc<aziot_key_client::Client>, cert_client: 
             &ca_cert_id,
         )
         .then(move |result| -> Result<_> { 
-            let edgelet_ca_props = CertificateProperties::new(
-                AZIOT_EDGE_CA_CERT_MAX_DURATION_SECS,
-                IOTEDGED_COMMONNAME.to_string(),
-                CertificateType::Ca,
-                IOTEDGED_CA_ALIAS.to_string(),
-            );
-            
-            match result {
+            let ca_cert_key_handle = match result {
                 Ok(cert) => { 
                     // Check expiration
                     let cert = openssl::x509::X509::from_pem(cert.as_ref())
@@ -230,7 +243,12 @@ fn get_edge_ca_key_pair(key_client: Arc<aziot_key_client::Client>, cert_client: 
                     
                     if diff < AZIOT_EDGE_CA_CERT_MIN_DURATION_SECS {
                         // Recursively call generate_key_and_csr to renew CA cert
-                        generate_key_and_csr(&edgelet_ca_props).context(context.clone())?;
+                        create_edge_ca_certificate(key_client, cert_client, ca_cert_id, context.clone())
+                    }
+                    else {
+                        // Edge CA certificate keypair should exist if certificate exists
+                        key_client.load_key_pair(ca_cert_id.as_str())
+                        .map_err(|e| Error::from(e.context(context.clone())))?
                     }
                 },
                 Err(_e) => { 
@@ -239,15 +257,27 @@ fn get_edge_ca_key_pair(key_client: Arc<aziot_key_client::Client>, cert_client: 
                 }
             }
         
-            // Edge CA certificate keypair should exist if certificate exists
-            let ca_cert_key_handle = key_client
-            .load_key_pair(ca_cert_id.as_str())
-            .map_err(|e| Error::from(e.context(context.clone())))?;
-
             Ok(ca_cert_key_handle)
         });
 
     Box::new(aziot_edged_ca_key_pair_handle)
+}
+
+fn create_edge_ca_certificate(key_client: Arc<aziot_key_client::Client>, cert_client: Arc<Mutex<CertificateClient>>, ca_cert_id: String, context: ErrorKind)
+    -> Box<dyn Future<Item = aziot_key_common::KeyHandle, Error = Error> + Send>{
+        let edgelet_ca_props = CertificateProperties::new(
+        AZIOT_EDGE_CA_CERT_MAX_DURATION_SECS,
+        IOTEDGED_COMMONNAME.to_string(),
+        CertificateType::Ca,
+        IOTEDGED_CA_ALIAS.to_string(),
+    );
+
+    let result = generate_key_and_csr(&edgelet_ca_props)
+    .map(|_| ())
+    .map_err(|e| Error::from(e.context(context.clone())))
+    .into_future();
+
+    Box::new(result)
 }
 
 #[derive(Debug)]
