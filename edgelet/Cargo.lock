@@ -1083,6 +1083,7 @@ dependencies = [
  "http 0.2.1",
  "hyper 0.13.7",
  "lazy_static",
+ "libc",
  "log",
  "nix 0.18.0",
  "percent-encoding 2.1.0",

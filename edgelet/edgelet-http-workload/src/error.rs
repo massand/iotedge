@@ -36,6 +36,9 @@ pub enum ErrorKind {
 
     #[fail(display = "Invalid certificate type")]
     InvalidCertificateType,
+    
+    #[fail(display = "Invalid Identity auth type")]
+    InvalidIdentityAuthType,
 
     #[fail(display = "Invalid Identity type")]
     InvalidIdentityType,

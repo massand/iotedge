@@ -105,10 +105,11 @@ fn get_derived_identity_key_handle(
         .get_module(name)
         .map_err(|_| Error::from(ErrorKind::GetIdentity))
         .and_then(|identity| match identity {
-            aziot_identity_common::Identity::Aziot(spec) => spec
+            aziot_identity_common::Identity::Aziot(spec) => Ok(spec
                 .auth
-                .map(|authinfo| Ok(authinfo.key_handle))
-                .expect("keyhandle missing"),
+                .ok_or(ErrorKind::InvalidIdentityAuthType)?
+                .key_handle
+                .expect("keyhandle missing")),
             aziot_identity_common::Identity::Local(_) => {
                 Err(Error::from(ErrorKind::InvalidIdentityType))
             }
