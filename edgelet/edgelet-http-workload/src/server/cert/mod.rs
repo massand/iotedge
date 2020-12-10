@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use chrono::{DateTime, Utc};
 use failure::{Fail, ResultExt};
-use futures::future::{Future, IntoFuture};
+use futures::future::{self, Future, IntoFuture};
 use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Body, Response, StatusCode};
 
@@ -38,6 +38,12 @@ const IOTEDGED_CA_ALIAS: &str = "iotedged-workload-ca";
 
 // Workload CA CN 
 const IOTEDGED_COMMONNAME: &str = "iotedged workload ca";
+
+#[derive(Clone)]
+struct EdgeCa {
+    cert_id: String,
+    key_id: String,
+}
 
 fn cert_to_response<T: CoreCertificate>(
     cert: &T,
@@ -89,31 +95,38 @@ fn refresh_cert(
     key_client: &Arc<aziot_key_client::Client>,
     cert_client: Arc<Mutex<CertificateClient>>,
     alias: String,
-    props: &CertificateProperties,
-    edge_ca_id: String,
+    new_cert_props: &CertificateProperties,
+    edge_ca: EdgeCa,
     context: ErrorKind,
 ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
     let key_client_copy = key_client.clone();
-    let response = generate_key_and_csr(props)
+    let response = generate_key_and_csr(new_cert_props)
         .map_err(|e| Error::from(e.context(context.clone())))
         .into_future()
-        .and_then(move |(privkey, csr)| -> Result<_>{
+        .and_then(move |(new_cert_privkey, new_cert_csr)| -> Result<_>{
             let context_copy = context.clone();
-            let response = get_edge_ca_key_pair(key_client_copy, cert_client.clone(),edge_ca_id.clone(), context_copy.clone())
+            let response = prepare_edge_ca(key_client_copy, cert_client.clone(), edge_ca.clone(), context_copy.clone())
                 .map_err(|e| Error::from(e.context(context_copy)))
-                .and_then(move |aziot_edged_ca_key_pair_handle| -> Result<_> {
+                .and_then(move |_| {
+                    let aziot_edged_ca_key_pair_handle = key_client_copy
+                        .load_key_pair(edge_ca.key_id.as_str())
+                        .map_err(|e| Error::from(e.context(context.clone())))?;
+                    Ok((new_cert_privkey, new_cert_csr, aziot_edged_ca_key_pair_handle))
+                })
+                .into_future()
+                .and_then(move |(new_cert_privkey, new_cert_csr, aziot_edged_ca_key_pair_handle)| -> Result<_> {
                     let context_copy = context.clone();   
                     let response = cert_client
                             .lock()
                             .expect("certificate client lock error")
                             .create_cert(
                                 &alias,
-                                &csr,
-                                Some((edge_ca_id.as_str(), &aziot_edged_ca_key_pair_handle)),
+                                &new_cert_csr,
+                                Some((edge_ca.cert_id.as_str(), &aziot_edged_ca_key_pair_handle)),
                             )
                             .map_err(|e| Error::from(e.context(context_copy)))
                             .and_then(move |cert| {
-                                let pk = privkey
+                                let pk = new_cert_privkey
                                     .private_key_to_pem_pkcs8()
                                     .context(context.clone())?;
                                 let cert = Certificate::new(cert, pk);
@@ -219,13 +232,13 @@ fn generate_key_and_csr(
     Ok((privkey, csr))
 }
 
-fn get_edge_ca_key_pair(key_client: Arc<aziot_key_client::Client>, cert_client: Arc<Mutex<CertificateClient>>, ca_cert_id: String, context: ErrorKind) 
-    -> Box<dyn Future<Item = aziot_key_common::KeyHandle, Error = Error> + Send>{
+fn prepare_edge_ca(key_client: Arc<aziot_key_client::Client>, cert_client: Arc<Mutex<CertificateClient>>, ca: EdgeCa, context: ErrorKind) 
+    -> Box<dyn Future<Item = (), Error = Error> + Send>{
     let aziot_edged_ca_key_pair_handle = cert_client
         .lock()
         .expect("certificate client lock error")
         .get_cert(
-            &ca_cert_id,
+            &ca.cert_id,
         )
         .then(move |result| -> Result<_> { 
             let ca_cert_key_handle = match result {
@@ -243,19 +256,20 @@ fn get_edge_ca_key_pair(key_client: Arc<aziot_key_client::Client>, cert_client: 
                     
                     if diff < AZIOT_EDGE_CA_CERT_MIN_DURATION_SECS {
                         // Recursively call generate_key_and_csr to renew CA cert
-                        create_edge_ca_certificate(key_client, cert_client, ca_cert_id, context.clone())
+                        create_edge_ca_certificate(key_client, cert_client, ca, context.clone())
+                        .map_err(|e| Error::from(e.context(context.clone())))
                     }
                     else {
                         // Edge CA certificate keypair should exist if certificate exists
-                        key_client.load_key_pair(ca_cert_id.as_str())
-                        .map_err(|e| Error::from(e.context(context.clone())))?
+                        future::ok(())
                     }
                 },
                 Err(_e) => { 
                     // Recursively call generate_key_and_csr to renew CA cert
-                    generate_key_and_csr(&edgelet_ca_props).context(context.clone())?;
+                    create_edge_ca_certificate(key_client, cert_client, ca, context.clone())
+                    .map_err(|e| Error::from(e.context(context.clone())))
                 }
-            }
+            };
         
             Ok(ca_cert_key_handle)
         });
@@ -263,8 +277,8 @@ fn get_edge_ca_key_pair(key_client: Arc<aziot_key_client::Client>, cert_client: 
     Box::new(aziot_edged_ca_key_pair_handle)
 }
 
-fn create_edge_ca_certificate(key_client: Arc<aziot_key_client::Client>, cert_client: Arc<Mutex<CertificateClient>>, ca_cert_id: String, context: ErrorKind)
-    -> Box<dyn Future<Item = aziot_key_common::KeyHandle, Error = Error> + Send>{
+fn create_edge_ca_certificate(key_client: Arc<aziot_key_client::Client>, cert_client: Arc<Mutex<CertificateClient>>, ca: EdgeCa, context: ErrorKind)
+    -> Box<dyn Future<Item = (), Error = Error> + Send>{
         let edgelet_ca_props = CertificateProperties::new(
         AZIOT_EDGE_CA_CERT_MAX_DURATION_SECS,
         IOTEDGED_COMMONNAME.to_string(),
@@ -272,10 +286,23 @@ fn create_edge_ca_certificate(key_client: Arc<aziot_key_client::Client>, cert_cl
         IOTEDGED_CA_ALIAS.to_string(),
     );
 
+    //generate new RSA key, import into key service, generate csr (setting expiration to 90 days by default), import into cert service, and generate new certs from that
     let result = generate_key_and_csr(&edgelet_ca_props)
-    .map(|_| ())
     .map_err(|e| Error::from(e.context(context.clone())))
-    .into_future();
+    .into_future()
+    .and_then(move |(new_cert_privkey, new_cert_csr)| -> Result<_> {
+        let context_copy = context.clone();   
+        let response = cert_client
+                .lock()
+                .expect("certificate client lock error")
+                .create_cert(
+                    &ca.cert_id.as_str(),
+                    &new_cert_csr,
+                    None,
+                )
+                .map_err(|e| Error::from(e.context(context_copy)));
+            Ok(response)
+        });
 
     Box::new(result)
 }

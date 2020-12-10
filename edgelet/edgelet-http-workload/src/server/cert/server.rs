@@ -125,7 +125,7 @@ where
                     cert_client,
                     alias,
                     &props,
-                    cfg.edge_ca_id().to_string(),
+                    super::EdgeCa { cert_id: cfg.edge_ca_id().to_string(), key_id: cfg.edge_ca_id().to_string() },
                     ErrorKind::CertOperation(CertOperation::GetServerCert),
                 )
                 .map_err(|_| Error::from(ErrorKind::CertOperation(CertOperation::GetServerCert)));
