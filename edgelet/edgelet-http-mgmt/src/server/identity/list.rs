@@ -48,10 +48,8 @@ impl Handler<Parameters> for ListIdentities {
                         .map(|identity| {
                             let (module_id, generation_id) = match identity {
                                 AziotIdentity::Aziot(spec) => (
-                                    spec.module_id
-                                        .ok_or(ErrorKind::IotHub),
-                                    spec.gen_id
-                                        .ok_or(ErrorKind::IotHub),
+                                    spec.module_id.ok_or(ErrorKind::IotHub),
+                                    spec.gen_id.ok_or(ErrorKind::IotHub),
                                 ),
                                 AziotIdentity::Local(_) => (
                                     Err(ErrorKind::InvalidIdentityType),

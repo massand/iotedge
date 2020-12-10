@@ -10,7 +10,10 @@ use hyper::header::{CONTENT_LENGTH, CONTENT_TYPE};
 use hyper::{Body, Response, StatusCode};
 
 use cert_client::client::CertificateClient;
-use edgelet_core::{Certificate as CoreCertificate, CertificateProperties, CertificateType, KeyBytes, PrivateKey as CorePrivateKey};
+use edgelet_core::{
+    Certificate as CoreCertificate, CertificateProperties, CertificateType, KeyBytes,
+    PrivateKey as CorePrivateKey,
+};
 use edgelet_http::Error as HttpError;
 use edgelet_utils::ensure_not_empty_with_context;
 use openssl::error::ErrorStack;
@@ -36,7 +39,7 @@ const AZIOT_EDGE_CA_CERT_MAX_DURATION_SECS: u64 = 180 * 24 * 3600;
 // Workload CA alias
 const IOTEDGED_CA_ALIAS: &str = "iotedged-workload-ca";
 
-// Workload CA CN 
+// Workload CA CN
 const IOTEDGED_COMMONNAME: &str = "iotedged workload ca";
 
 #[derive(Clone)]
@@ -115,7 +118,7 @@ fn refresh_cert(
                 })
                 .into_future()
                 .and_then(move |(new_cert_privkey, new_cert_csr, aziot_edged_ca_key_pair_handle)| -> Result<_> {
-                    let context_copy = context.clone();   
+                    let context_copy = context.clone();
                     let response = cert_client
                             .lock()
                             .expect("certificate client lock error")
@@ -183,17 +186,17 @@ fn generate_key_and_csr(
     // let mut subject_key_id = openssl::x509::extension::SubjectKeyIdentifier::new();
 
     match props.certificate_type() {
-         &edgelet_core::CertificateType::Client => { 
-             extended_key_usage.client_auth(); 
-            },
-         &edgelet_core::CertificateType::Server => { 
-            extended_key_usage.server_auth(); 
-            },
-         &edgelet_core::CertificateType::Ca => { 
-             basic_constraints.ca().critical().pathlen(0);
-             key_usage.critical().digital_signature().key_cert_sign();
-            },
-         _ => {},
+        &edgelet_core::CertificateType::Client => {
+            extended_key_usage.client_auth();
+        }
+        &edgelet_core::CertificateType::Server => {
+            extended_key_usage.server_auth();
+        }
+        &edgelet_core::CertificateType::Ca => {
+            basic_constraints.ca().critical().pathlen(0);
+            key_usage.critical().digital_signature().key_cert_sign();
+        }
+        _ => {}
     }
 
     let extended_key_usage = extended_key_usage.build()?;
@@ -232,54 +235,60 @@ fn generate_key_and_csr(
     Ok((privkey, csr))
 }
 
-fn prepare_edge_ca(key_client: Arc<aziot_key_client::Client>, cert_client: Arc<Mutex<CertificateClient>>, ca: EdgeCa, context: ErrorKind) 
-    -> Box<dyn Future<Item = (), Error = Error> + Send>{
+fn prepare_edge_ca(
+    key_client: Arc<aziot_key_client::Client>,
+    cert_client: Arc<Mutex<CertificateClient>>,
+    ca: EdgeCa,
+    context: ErrorKind,
+) -> Box<dyn Future<Item = (), Error = Error> + Send> {
     let aziot_edged_ca_key_pair_handle = cert_client
         .lock()
         .expect("certificate client lock error")
-        .get_cert(
-            &ca.cert_id,
-        )
-        .then(move |result| -> Result<_> { 
+        .get_cert(&ca.cert_id)
+        .then(move |result| -> Result<_> {
             let ca_cert_key_handle = match result {
-                Ok(cert) => { 
+                Ok(cert) => {
                     // Check expiration
                     let cert = openssl::x509::X509::from_pem(cert.as_ref())
                         .map_err(|e| Error::from(e.context(context.clone())))?;
-                    
-                    let epoch = openssl::asn1::Asn1Time::from_unix(0).expect("unix epoch must be valid");
+
+                    let epoch =
+                        openssl::asn1::Asn1Time::from_unix(0).expect("unix epoch must be valid");
 
                     let diff = epoch
                         .diff(&cert.not_after())
                         .map_err(|e| Error::from(e.context(context.clone())))?;
                     let diff = i64::from(diff.secs) + i64::from(diff.days) * 86400;
-                    
+
                     if diff < AZIOT_EDGE_CA_CERT_MIN_DURATION_SECS {
                         // Recursively call generate_key_and_csr to renew CA cert
                         create_edge_ca_certificate(key_client, cert_client, ca, context.clone())
-                        .map_err(|e| Error::from(e.context(context.clone())))
-                    }
-                    else {
+                            .map_err(|e| Error::from(e.context(context.clone())))
+                    } else {
                         // Edge CA certificate keypair should exist if certificate exists
                         future::ok(())
                     }
-                },
-                Err(_e) => { 
+                }
+                Err(_e) => {
                     // Recursively call generate_key_and_csr to renew CA cert
                     create_edge_ca_certificate(key_client, cert_client, ca, context.clone())
-                    .map_err(|e| Error::from(e.context(context.clone())))
+                        .map_err(|e| Error::from(e.context(context.clone())))
                 }
             };
-        
+
             Ok(ca_cert_key_handle)
         });
 
     Box::new(aziot_edged_ca_key_pair_handle)
 }
 
-fn create_edge_ca_certificate(key_client: Arc<aziot_key_client::Client>, cert_client: Arc<Mutex<CertificateClient>>, ca: EdgeCa, context: ErrorKind)
-    -> Box<dyn Future<Item = (), Error = Error> + Send>{
-        let edgelet_ca_props = CertificateProperties::new(
+fn create_edge_ca_certificate(
+    key_client: Arc<aziot_key_client::Client>,
+    cert_client: Arc<Mutex<CertificateClient>>,
+    ca: EdgeCa,
+    context: ErrorKind,
+) -> Box<dyn Future<Item = (), Error = Error> + Send> {
+    let edgelet_ca_props = CertificateProperties::new(
         AZIOT_EDGE_CA_CERT_MAX_DURATION_SECS,
         IOTEDGED_COMMONNAME.to_string(),
         CertificateType::Ca,
@@ -288,18 +297,14 @@ fn create_edge_ca_certificate(key_client: Arc<aziot_key_client::Client>, cert_cl
 
     //generate new RSA key, import into key service, generate csr (setting expiration to 90 days by default), import into cert service, and generate new certs from that
     let result = generate_key_and_csr(&edgelet_ca_props)
-    .map_err(|e| Error::from(e.context(context.clone())))
-    .into_future()
-    .and_then(move |(new_cert_privkey, new_cert_csr)| -> Result<_> {
-        let context_copy = context.clone();   
-        let response = cert_client
+        .map_err(|e| Error::from(e.context(context.clone())))
+        .into_future()
+        .and_then(move |(new_cert_privkey, new_cert_csr)| -> Result<_> {
+            let context_copy = context.clone();
+            let response = cert_client
                 .lock()
                 .expect("certificate client lock error")
-                .create_cert(
-                    &ca.cert_id.as_str(),
-                    &new_cert_csr,
-                    None,
-                )
+                .create_cert(&ca.cert_id.as_str(), &new_cert_csr, None)
                 .map_err(|e| Error::from(e.context(context_copy)));
             Ok(response)
         });
