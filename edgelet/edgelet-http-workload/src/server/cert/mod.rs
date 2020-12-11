@@ -102,56 +102,55 @@ fn refresh_cert(
     edge_ca: EdgeCa,
     context: ErrorKind,
 ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
-    let key_client_copy = key_client.clone();
+    let context = context.clone();
+    let key_client = key_client.clone();
     let response = generate_key_and_csr(new_cert_props)
         .map_err(|e| Error::from(e.context(context.clone())))
         .into_future()
-        .and_then(move |(new_cert_privkey, new_cert_csr)| -> Result<_>{
+        .and_then(move |(new_cert_privkey, new_cert_csr)| {
+            let edge_ca = edge_ca.clone();
             let context_copy = context.clone();
-            let response = prepare_edge_ca(key_client_copy, cert_client.clone(), edge_ca.clone(), context_copy.clone())
-                .map_err(|e| Error::from(e.context(context_copy)))
-                .and_then(move |_| {
-                    let aziot_edged_ca_key_pair_handle = key_client_copy
-                        .load_key_pair(edge_ca.key_id.as_str())
-                        .map_err(|e| Error::from(e.context(context.clone())))?;
-                    Ok((new_cert_privkey, new_cert_csr, aziot_edged_ca_key_pair_handle))
-                })
-                .into_future()
-                .and_then(move |(new_cert_privkey, new_cert_csr, aziot_edged_ca_key_pair_handle)| -> Result<_> {
-                    let context_copy = context.clone();
-                    let response = cert_client
-                            .lock()
-                            .expect("certificate client lock error")
-                            .create_cert(
-                                &alias,
-                                &new_cert_csr,
-                                Some((edge_ca.cert_id.as_str(), &aziot_edged_ca_key_pair_handle)),
-                            )
-                            .map_err(|e| Error::from(e.context(context_copy)))
-                            .and_then(move |cert| {
-                                let pk = new_cert_privkey
-                                    .private_key_to_pem_pkcs8()
-                                    .context(context.clone())?;
-                                let cert = Certificate::new(cert, pk);
-                                let cert = cert_to_response(&cert, context.clone())?;
-                                let body = match serde_json::to_string(&cert) {
-                                    Ok(body) => body,
-                                    Err(err) => return Err(Error::from(err.context(context))),
-                                };
+            prepare_edge_ca(&key_client, &cert_client, &edge_ca, &context)
+                .map_err(move |e| Error::from(e.context(context_copy.clone())))
+                .and_then(move |_| key_client
+                        .load_key_pair(edge_ca.clone().key_id.as_str())
+                        .map_err(|e| Error::from(e.context(context.clone())))
+                        .and_then(move |aziot_edged_ca_key_pair_handle| -> Result<_> {
+                            let context_copy = context.clone();
+                            let response = cert_client
+                                    .lock()
+                                    .expect("certificate client lock error")
+                                    .create_cert(
+                                        &alias,
+                                        &new_cert_csr,
+                                        Some((edge_ca.cert_id.as_str(), &aziot_edged_ca_key_pair_handle)),
+                                    )
+                                    .map_err(move |e| Error::from(e.context(context_copy.clone())))
+                                    .and_then(move |cert| {
+                                        let context_copy = context.clone();
+                                        
+                                        let pk = new_cert_privkey
+                                            .private_key_to_pem_pkcs8()
+                                            .context(context.clone())?;
+                                        let cert = Certificate::new(cert, pk);
+                                        let cert = cert_to_response(&cert, context_copy.clone())?;
+                                        let body = match serde_json::to_string(&cert) {
+                                            Ok(body) => body,
+                                            Err(err) => return Err(Error::from(err.context(context_copy.clone()))),
+                                        };
 
-                                let response = Response::builder()
-                                    .status(StatusCode::CREATED)
-                                    .header(CONTENT_TYPE, "application/json")
-                                    .header(CONTENT_LENGTH, body.len().to_string().as_str())
-                                    .body(body.into())
-                                    .context(context)?;
+                                        let response = Response::builder()
+                                            .status(StatusCode::CREATED)
+                                            .header(CONTENT_TYPE, "application/json")
+                                            .header(CONTENT_LENGTH, body.len().to_string().as_str())
+                                            .body(body.into())
+                                            .context(context_copy)?;
 
+                                        Ok(response)
+                                    });
                                 Ok(response)
-                            });
-                        Ok(response)
-                    },
-                ).flatten();
-            Ok(response)
+                        })
+            )
         })
         .flatten()
         .or_else(|e| Ok(e.into_response()));
@@ -236,11 +235,16 @@ fn generate_key_and_csr(
 }
 
 fn prepare_edge_ca(
-    key_client: Arc<aziot_key_client::Client>,
-    cert_client: Arc<Mutex<CertificateClient>>,
-    ca: EdgeCa,
-    context: ErrorKind,
+    key_client: &Arc<aziot_key_client::Client>,
+    cert_client: &Arc<Mutex<CertificateClient>>,
+    ca: &EdgeCa,
+    context: &ErrorKind,
 ) -> Box<dyn Future<Item = (), Error = Error> + Send> {
+    let key_client_copy = key_client.clone();
+    let cert_client_copy = cert_client.clone();
+    let cert_client = cert_client.clone();
+    let context = context.clone();
+    let ca = ca.clone();
     let aziot_edged_ca_key_pair_handle = cert_client
         .lock()
         .expect("certificate client lock error")
@@ -262,31 +266,34 @@ fn prepare_edge_ca(
 
                     if diff < AZIOT_EDGE_CA_CERT_MIN_DURATION_SECS {
                         // Recursively call generate_key_and_csr to renew CA cert
-                        create_edge_ca_certificate(key_client, cert_client, ca, context.clone())
-                            .map_err(|e| Error::from(e.context(context.clone())))
+                        future::Either::A(future::Either::A(create_edge_ca_certificate(&key_client_copy, &cert_client_copy, &ca, &context)
+                            .map_err(move |e| Error::from(e.context(context.clone())))
+                            .map(|_|())))
                     } else {
                         // Edge CA certificate keypair should exist if certificate exists
-                        future::ok(())
+                        future::Either::A(future::Either::B(futures::future::ok(())))
                     }
                 }
                 Err(_e) => {
                     // Recursively call generate_key_and_csr to renew CA cert
-                    create_edge_ca_certificate(key_client, cert_client, ca, context.clone())
-                        .map_err(|e| Error::from(e.context(context.clone())))
+                    future::Either::B(create_edge_ca_certificate(&key_client_copy, &cert_client_copy, &ca, &context)
+                        .map_err(move |e| Error::from(e.context(context.clone())))
+                        .map(|_|()))
                 }
             };
 
             Ok(ca_cert_key_handle)
-        });
+        })
+        .flatten();
 
     Box::new(aziot_edged_ca_key_pair_handle)
 }
 
 fn create_edge_ca_certificate(
-    key_client: Arc<aziot_key_client::Client>,
-    cert_client: Arc<Mutex<CertificateClient>>,
-    ca: EdgeCa,
-    context: ErrorKind,
+    _key_client: &Arc<aziot_key_client::Client>,
+    cert_client: &Arc<Mutex<CertificateClient>>,
+    ca: &EdgeCa,
+    context: &ErrorKind,
 ) -> Box<dyn Future<Item = (), Error = Error> + Send> {
     let edgelet_ca_props = CertificateProperties::new(
         AZIOT_EDGE_CA_CERT_MAX_DURATION_SECS,
@@ -295,19 +302,24 @@ fn create_edge_ca_certificate(
         IOTEDGED_CA_ALIAS.to_string(),
     );
 
+    let ca = ca.clone();
+    let cert_client = cert_client.clone();
+    let context = context.clone();
+
     //generate new RSA key, import into key service, generate csr (setting expiration to 90 days by default), import into cert service, and generate new certs from that
     let result = generate_key_and_csr(&edgelet_ca_props)
         .map_err(|e| Error::from(e.context(context.clone())))
         .into_future()
-        .and_then(move |(new_cert_privkey, new_cert_csr)| -> Result<_> {
-            let context_copy = context.clone();
+        .and_then(move |(_new_cert_privkey, new_cert_csr)| -> Result<_> {
             let response = cert_client
                 .lock()
                 .expect("certificate client lock error")
-                .create_cert(&ca.cert_id.as_str(), &new_cert_csr, None)
-                .map_err(|e| Error::from(e.context(context_copy)));
+                .create_cert(ca.cert_id.as_str(), &new_cert_csr, None)
+                .map_err(|e| Error::from(e.context(context)))
+                .map(|_|());
             Ok(response)
-        });
+        })
+        .flatten();
 
     Box::new(result)
 }
