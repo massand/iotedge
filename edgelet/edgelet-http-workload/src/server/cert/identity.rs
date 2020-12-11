@@ -103,7 +103,7 @@ where
                     cert_client,
                     alias,
                     &props,
-                    super::EdgeCa {
+                    super::EdgeCaCertificate {
                         cert_id: cfg.edge_ca_id().to_string(),
                         key_id: cfg.edge_ca_id().to_string(),
                     },

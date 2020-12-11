@@ -43,6 +43,9 @@ pub enum ErrorKind {
     #[fail(display = "Invalid Identity type")]
     InvalidIdentityType,
 
+    #[fail(display = "Key Client error")]
+    KeyClient,
+
     #[fail(display = "Request body is malformed")]
     MalformedRequestBody,
 
