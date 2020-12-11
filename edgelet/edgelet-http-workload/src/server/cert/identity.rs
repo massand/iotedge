@@ -18,19 +18,25 @@ use crate::IntoResponse;
 
 pub struct IdentityCertHandler<W: WorkloadConfig> {
     cert_client: Arc<Mutex<CertificateClient>>,
-    key_client: Arc<aziot_key_client::Client>,
+    // key_client: Arc<aziot_key_client::Client>,
+    // key_engine: openssl2::FunctionalEngine,
+    key_connector: http_common::Connector,
     config: W,
 }
 
 impl<W: WorkloadConfig> IdentityCertHandler<W> {
     pub fn new(
-        key_client: Arc<aziot_key_client::Client>,
         cert_client: Arc<Mutex<CertificateClient>>,
+        // key_client: Arc<aziot_key_client::Client>,
+        // key_engine: openssl2::FunctionalEngine,
+        key_connector: http_common::Connector,
         config: W,
     ) -> Self {
         IdentityCertHandler {
-            key_client,
             cert_client,
+            // key_client,
+            // key_engine,
+            key_connector,
             config,
         }
     }
@@ -47,7 +53,7 @@ where
     ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
         let cfg = self.config.clone();
         let cert_client = self.cert_client.clone();
-        let key_client = self.key_client.clone();
+        let key_connector = self.key_connector.clone();
 
         let response = params
             .name("name")
@@ -66,7 +72,7 @@ where
             })
             .into_future()
             .flatten()
-            .and_then(move |(cn, alias, module_uri, body)| {
+            .and_then(move |(cn, alias, module_uri, body)| {                
                 let max_duration = cfg.get_cert_max_duration(CertificateType::Client);
                 let cert_req: IdentityCertificateRequest =
                     serde_json::from_slice(&body).context(ErrorKind::MalformedRequestBody)?;
@@ -98,8 +104,30 @@ where
                 Ok((alias, props, cfg))
             })
             .and_then(move |(alias, props, cfg)| {
+                let key_engine = {
+                    let key_client = aziot_key_client::Client::new(
+                        aziot_key_common_http::ApiVersion::V2020_09_01,
+                        key_connector.clone(),
+                    );
+                    let key_client = Arc::new(key_client);
+            
+                    let key_engine =
+                        aziot_key_openssl_engine::load(key_client).context(ErrorKind::LoadKeyOpensslEngine)?;
+                    key_engine
+                };
+        
+                let key_client = {
+                    let key_client = aziot_key_client::Client::new(
+                        aziot_key_common_http::ApiVersion::V2020_09_01,
+                        key_connector,
+                    );
+                    let key_client = Arc::new(key_client);
+                    key_client
+                };
+                
                 let response = refresh_cert(
                     &key_client,
+                    &key_engine,
                     cert_client,
                     alias,
                     &props,

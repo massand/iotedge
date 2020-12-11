@@ -704,6 +704,7 @@ dependencies = [
  "aziot-identity-common",
  "aziot-key-client",
  "aziot-key-common",
+ "aziot-key-common-http",
  "aziot-key-openssl-engine",
  "base64 0.9.3",
  "cert-client",

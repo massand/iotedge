@@ -96,6 +96,7 @@ fn compute_validity(expiration: &str, max_duration_sec: i64, context: ErrorKind)
 
 fn refresh_cert(
     key_client: &Arc<aziot_key_client::Client>,
+    _key_engine: &openssl2::FunctionalEngine,
     cert_client: Arc<Mutex<CertificateClient>>,
     alias: String,
     new_cert_props: &CertificateProperties,
