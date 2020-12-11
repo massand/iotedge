@@ -65,7 +65,7 @@ impl Handler<Parameters> for DecryptHandler {
                     let key_client = Arc::new(key_client);
                     key_client
                 };
-                
+
                 let plaintext = base64::decode(request.ciphertext())
                     .context(ErrorKind::MalformedRequestBody)?;
                 let initialization_vector = base64::decode(request.initialization_vector())

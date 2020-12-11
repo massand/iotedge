@@ -65,7 +65,7 @@ impl Handler<Parameters> for EncryptHandler {
                     let key_client = Arc::new(key_client);
                     key_client
                 };
-                
+
                 let plaintext =
                     base64::decode(request.plaintext()).context(ErrorKind::MalformedRequestBody)?;
                 let initialization_vector = base64::decode(request.initialization_vector())

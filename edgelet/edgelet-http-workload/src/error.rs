@@ -46,6 +46,9 @@ pub enum ErrorKind {
     #[fail(display = "Key Client error")]
     KeyClient,
 
+    #[fail(display = "Failed to load OpenSSL engine")]
+    LoadKeyOpensslEngine,
+
     #[fail(display = "Request body is malformed")]
     MalformedRequestBody,
 
@@ -58,9 +61,6 @@ pub enum ErrorKind {
     #[fail(display = "Module not found")]
     ModuleNotFound(String),
 
-    #[fail(display = "Failed to load OpenSSL engine")]
-    LoadKeyOpensslEngine,
-    
     #[fail(display = "Could not start workload service")]
     StartService,
 }

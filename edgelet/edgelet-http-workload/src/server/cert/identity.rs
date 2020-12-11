@@ -72,7 +72,7 @@ where
             })
             .into_future()
             .flatten()
-            .and_then(move |(cn, alias, module_uri, body)| {                
+            .and_then(move |(cn, alias, module_uri, body)| {
                 let max_duration = cfg.get_cert_max_duration(CertificateType::Client);
                 let cert_req: IdentityCertificateRequest =
                     serde_json::from_slice(&body).context(ErrorKind::MalformedRequestBody)?;
@@ -104,30 +104,8 @@ where
                 Ok((alias, props, cfg))
             })
             .and_then(move |(alias, props, cfg)| {
-                let key_engine = {
-                    let key_client = aziot_key_client::Client::new(
-                        aziot_key_common_http::ApiVersion::V2020_09_01,
-                        key_connector.clone(),
-                    );
-                    let key_client = Arc::new(key_client);
-            
-                    let key_engine =
-                        aziot_key_openssl_engine::load(key_client).context(ErrorKind::LoadKeyOpensslEngine)?;
-                    key_engine
-                };
-        
-                let key_client = {
-                    let key_client = aziot_key_client::Client::new(
-                        aziot_key_common_http::ApiVersion::V2020_09_01,
-                        key_connector,
-                    );
-                    let key_client = Arc::new(key_client);
-                    key_client
-                };
-                
                 let response = refresh_cert(
-                    &key_client,
-                    &key_engine,
+                    &key_connector,
                     cert_client,
                     alias,
                     &props,

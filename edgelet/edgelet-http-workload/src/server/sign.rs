@@ -43,7 +43,7 @@ impl Handler<Parameters> for SignHandler {
         params: Parameters,
     ) -> Box<dyn Future<Item = Response<Body>, Error = HttpError> + Send> {
         let key_connector = self.key_connector.clone();
-        
+
         let response = params
             .name("name")
             .ok_or_else(|| Error::from(ErrorKind::MissingRequiredParameter("name")))
@@ -107,7 +107,7 @@ fn get_signature(
         let key_client = Arc::new(key_client);
         key_client
     };
-    
+
     key_client
         .sign(
             &key_handle,
