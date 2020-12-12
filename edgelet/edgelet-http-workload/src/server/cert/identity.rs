@@ -18,8 +18,6 @@ use crate::IntoResponse;
 
 pub struct IdentityCertHandler<W: WorkloadConfig> {
     cert_client: Arc<Mutex<CertificateClient>>,
-    // key_client: Arc<aziot_key_client::Client>,
-    // key_engine: openssl2::FunctionalEngine,
     key_connector: http_common::Connector,
     config: W,
 }
@@ -27,15 +25,11 @@ pub struct IdentityCertHandler<W: WorkloadConfig> {
 impl<W: WorkloadConfig> IdentityCertHandler<W> {
     pub fn new(
         cert_client: Arc<Mutex<CertificateClient>>,
-        // key_client: Arc<aziot_key_client::Client>,
-        // key_engine: openssl2::FunctionalEngine,
         key_connector: http_common::Connector,
         config: W,
     ) -> Self {
         IdentityCertHandler {
             cert_client,
-            // key_client,
-            // key_engine,
             key_connector,
             config,
         }
