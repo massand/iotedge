@@ -238,39 +238,31 @@ fn create_csr(
 
     csr.set_pubkey(&public_key)?;
 
+    let mut extensions = openssl::stack::Stack::new()?;
     let mut extended_key_usage = openssl::x509::extension::ExtendedKeyUsage::new();
     let mut basic_constraints = openssl::x509::extension::BasicConstraints::new();
     let mut key_usage = openssl::x509::extension::KeyUsage::new();
-    // let mut auth_key_id = openssl::x509::extension::AuthorityKeyIdentifier::new();
-    // let mut subject_key_id = openssl::x509::extension::SubjectKeyIdentifier::new();
 
     match props.certificate_type() {
         &edgelet_core::CertificateType::Client => {
             extended_key_usage.client_auth();
+            
+            extensions.push(extended_key_usage.build()?)?;
         }
         &edgelet_core::CertificateType::Server => {
             extended_key_usage.server_auth();
+
+            extensions.push(extended_key_usage.build()?)?;
         }
         &edgelet_core::CertificateType::Ca => {
             basic_constraints.ca().critical().pathlen(0);
             key_usage.critical().digital_signature().key_cert_sign();
+
+            extensions.push(basic_constraints.build()?)?;
+            extensions.push(key_usage.build()?)?;
         }
         _ => {}
     }
-
-    let extended_key_usage = extended_key_usage.build()?;
-    let basic_constraints = basic_constraints.build()?;
-    let key_usage = key_usage.build()?;
-
-    // let auth_key_id = auth_key_id.build(X509v3Context)?;
-    // let subject_key_id = subject_key_id.build()?;
-
-    let mut extensions = openssl::stack::Stack::new()?;
-    extensions.push(extended_key_usage)?;
-    extensions.push(basic_constraints)?;
-    extensions.push(key_usage)?;
-    // extensions.push(auth_key_id)?;
-    // extensions.push(subject_key_id)?;
 
     if props.dns_san_entries().is_some() || props.ip_entries().is_some() {
         let mut subject_alt_name = openssl::x509::extension::SubjectAlternativeName::new();
