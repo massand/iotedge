@@ -45,6 +45,7 @@ use log::{debug, error, info, Level};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use tokio::prelude::*;
 use url::Url;
 
 use dps::DPS_API_VERSION;
@@ -212,6 +213,9 @@ const IOTEDGED_MIN_EXPIRATION_DURATION: i64 = 5 * 60;
 const IOTEDGE_ID_CERT_MAX_DURATION_SECS: i64 = 2 * 3600;
 // 90 days
 const IOTEDGE_SERVER_CERT_MAX_DURATION_SECS: i64 = 90 * 24 * 3600;
+
+/// This is the number of seconds to wait before timing out the TPM auth handshake process
+const DPS_TPM_AUTH_TIMEOUT_SECS: u64 = 30 * 60;
 
 // HSM lib version that the iotedge runtime required
 const IOTEDGE_COMPAT_HSM_VERSION: &str = "1.0.3";
@@ -1962,7 +1966,12 @@ where
             Ok((derived_key_store, prov_result, k))
         });
 
-    tokio_runtime.block_on(provision)
+    let timeout = provision.timeout(Duration::from_secs(DPS_TPM_AUTH_TIMEOUT_SECS))
+        .map_err(|_| Error::from(ErrorKind::Initialize(
+            InitializeErrorReason::DpsTpmProvisioningTimeout,
+        )));
+
+    tokio_runtime.block_on(timeout)
 }
 
 fn start_runtime<K, HC, M>(

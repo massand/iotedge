@@ -168,6 +168,7 @@ pub enum InitializeErrorReason {
     DestroyWorkloadCa,
     DeviceClient,
     DpsProvisioningClient,
+    DpsTpmProvisioningTimeout,
     EdgeRuntime,
     ExternalProvisioningClient(ExternalProvisioningErrorReason),
     Hsm,
@@ -250,6 +251,10 @@ impl fmt::Display for InitializeErrorReason {
 
             InitializeErrorReason::DpsProvisioningClient => {
                 write!(f, "Could not initialize DPS provisioning client")
+            }
+
+            InitializeErrorReason::DpsTpmProvisioningTimeout => {
+                write!(f, "Could not provisioning before TPM auth timeout")
             }
 
             InitializeErrorReason::EdgeRuntime => write!(f, "Could not initialize edge runtime"),
